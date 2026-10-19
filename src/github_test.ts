@@ -14,7 +14,7 @@ Deno.test("GitHub release schema", async (t) => {
   };
 
   await t.assertSnapshot({
-    parsed: await fetchLatestRelease(() => json(release)),
+    parsed: await fetchLatestRelease("cli", "cli", () => json(release)),
     httpStatus: await failure(() =>
       json({ tag_name: "v1.0.0", assets: [] }, 500)
     ),
@@ -31,7 +31,7 @@ function json(body: unknown, status = 200): Promise<Response> {
 
 async function failure(load: () => Promise<Response>): Promise<string> {
   try {
-    await fetchLatestRelease(load);
+    await fetchLatestRelease("cli", "cli", load);
     return "did not throw";
   } catch (error) {
     return error instanceof Error ? error.message : "unknown error";

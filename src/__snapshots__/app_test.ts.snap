@@ -38,9 +38,9 @@ child.on("exit", (code, signal) => {
   "name": "gh",
   "platforms": {
     "linux-aarch64": {
-      "size": 10,
+      "size": 112,
       "hash": "sha256",
-      "digest": "abababababababababababababababababababababababababababababababab",
+      "digest": "3649be5c7a270a9ffd94da30d6706037dafb82d14e090716fcae9ee3383bb40f",
       "format": "tar.gz",
       "path": "gh_2.102.0_linux_arm64/bin/gh",
       "providers": [
@@ -50,9 +50,9 @@ child.on("exit", (code, signal) => {
       ]
     },
     "linux-x86_64": {
-      "size": 10,
+      "size": 113,
       "hash": "sha256",
-      "digest": "abababababababababababababababababababababababababababababababab",
+      "digest": "84b815c115ca3864f751d42bd6158060dec6e224d0e4f42345b5bc0bb02a45e1",
       "format": "tar.gz",
       "path": "gh_2.102.0_linux_amd64/bin/gh",
       "providers": [
@@ -62,9 +62,9 @@ child.on("exit", (code, signal) => {
       ]
     },
     "macos-aarch64": {
-      "size": 10,
+      "size": 260,
       "hash": "sha256",
-      "digest": "abababababababababababababababababababababababababababababababab",
+      "digest": "68ac28ea00ad398d73dd7f121f28459f65c2876af10e4a9804d09b934f023b37",
       "format": "zip",
       "path": "gh_2.102.0_macOS_arm64/bin/gh",
       "providers": [
@@ -74,9 +74,9 @@ child.on("exit", (code, signal) => {
       ]
     },
     "macos-x86_64": {
-      "size": 10,
+      "size": 260,
       "hash": "sha256",
-      "digest": "abababababababababababababababababababababababababababababababab",
+      "digest": "dcbc677bc60e9228712f14ec71b6079382603d4fb63897a921487d6df78de9c5",
       "format": "zip",
       "path": "gh_2.102.0_macOS_amd64/bin/gh",
       "providers": [
@@ -86,9 +86,9 @@ child.on("exit", (code, signal) => {
       ]
     },
     "windows-aarch64": {
-      "size": 10,
+      "size": 222,
       "hash": "sha256",
-      "digest": "abababababababababababababababababababababababababababababababab",
+      "digest": "975b50b7e2d0c83edde198eff548f4fa18fc59523e3c8f0e4cfaef9abc175faf",
       "format": "zip",
       "path": "bin/gh.exe",
       "providers": [
@@ -98,9 +98,9 @@ child.on("exit", (code, signal) => {
       ]
     },
     "windows-x86_64": {
-      "size": 10,
+      "size": 222,
       "hash": "sha256",
-      "digest": "abababababababababababababababababababababababababababababababab",
+      "digest": "975b50b7e2d0c83edde198eff548f4fa18fc59523e3c8f0e4cfaef9abc175faf",
       "format": "zip",
       "path": "bin/gh.exe",
       "providers": [
@@ -140,8 +140,8 @@ child.on("exit", (code, signal) => {
           "fb-dotslash": "0.5.8",
         },
         dist: {
-          integrity: "sha512-7ZJQcrbTsQprz8UpgqyvVkNsGLDeVBnEjiUi/RwSvMORlrfxfcr9lA6lpM0tnaF+orbJnNpz4uM+StorN+e9Sg==",
-          shasum: "b05d0d906c8704981c89f796f810d3b5379cbc32",
+          integrity: "sha512-3BSsJWVVTwdI6HQ0veURJCD14MFT36p43AoruliAfMGcLDZhk9n4xTjsWXnLaVeiqEsUyld+0kQ7dF7Viyv1Eg==",
+          shasum: "59550845fc2bf0f4b55ecd5eb94132ca55b6edb0",
           tarball: "http://127.0.0.1:8787/@tr/cli--cli/-/cli--cli-2.102.0.tgz",
         },
         name: "@tr/cli--cli",
@@ -149,7 +149,7 @@ child.on("exit", (code, signal) => {
       },
     },
   },
-  repeatIntegrity: "sha512-7ZJQcrbTsQprz8UpgqyvVkNsGLDeVBnEjiUi/RwSvMORlrfxfcr9lA6lpM0tnaF+orbJnNpz4uM+StorN+e9Sg==",
+  repeatIntegrity: "sha512-3BSsJWVVTwdI6HQ0veURJCD14MFT36p43AoruliAfMGcLDZhk9n4xTjsWXnLaVeiqEsUyld+0kQ7dF7Viyv1Eg==",
   tarballStatus: 200,
 }
 `;

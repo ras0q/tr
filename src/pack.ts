@@ -2,14 +2,14 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { gzipSync } from "fflate";
 import { pack as createTarPack } from "tar-stream";
-import { type ResolvedCli } from "./resolve.ts";
+import { type SelectedPlatform, type SelectedRelease } from "./resolve.ts";
 
-/** Pinned so a given cli release always produces the same tarball bytes. */
+/** Pinned so a given release always produces the same tarball bytes. */
 export const FB_DOTSLASH_VERSION = "0.5.8";
 
-export const PACKAGE_NAME = "@tr/cli--cli";
-
-const LAUNCHER_PATH = "bin/gh.mjs";
+type PackedRelease = SelectedRelease & {
+  platforms: Array<SelectedPlatform & { path: string }>;
+};
 
 export type Packed = {
   version: string;
@@ -18,7 +18,7 @@ export type Packed = {
   integrity: string;
 };
 
-export function renderDotslash(resolved: ResolvedCli): string {
+export function renderDotslash(resolved: PackedRelease): string {
   const platforms: Record<string, unknown> = {};
   const ordered = [...resolved.platforms].sort((a, b) =>
     a.platform.localeCompare(b.platform)
@@ -28,22 +28,23 @@ export function renderDotslash(resolved: ResolvedCli): string {
       size: item.size,
       hash: "sha256",
       digest: item.digest,
-      format: item.format,
+      ...(item.format ? { format: item.format } : {}),
       path: item.path,
       providers: [{ url: item.url }],
     };
   }
-  const body = JSON.stringify({ name: "gh", platforms }, null, 2);
+  const body = JSON.stringify({ name: resolved.command, platforms }, null, 2);
   return `#!/usr/bin/env dotslash\n${body}\n`;
 }
 
-export function renderPackageJson(version: string): string {
+export function renderPackageJson(resolved: PackedRelease): string {
+  const launcher = `bin/${resolved.command}.mjs`;
   return JSON.stringify(
     {
-      name: PACKAGE_NAME,
-      version,
+      name: resolved.packageName,
+      version: resolved.version,
       type: "module",
-      bin: { gh: LAUNCHER_PATH },
+      bin: { [resolved.command]: launcher },
       dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
     },
     null,
@@ -51,7 +52,7 @@ export function renderPackageJson(version: string): string {
   ) + "\n";
 }
 
-export function renderLauncher(): string {
+export function renderLauncher(command: string): string {
   return `#!/usr/bin/env node
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -62,7 +63,7 @@ const manifest = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
   "manifests",
-  "gh.dotslash",
+  "${command}.dotslash",
 );
 const child = spawn(dotslash, [manifest, ...process.argv.slice(2)], {
   stdio: "inherit",
@@ -80,11 +81,14 @@ child.on("exit", (code, signal) => {
 `;
 }
 
-export async function packResolved(resolved: ResolvedCli): Promise<Packed> {
+export async function packResolved(resolved: PackedRelease): Promise<Packed> {
   const tar = await tarFiles([
-    ["package/package.json", renderPackageJson(resolved.version)],
-    [`package/${LAUNCHER_PATH}`, renderLauncher()],
-    ["package/manifests/gh.dotslash", renderDotslash(resolved)],
+    ["package/package.json", renderPackageJson(resolved)],
+    [`package/bin/${resolved.command}.mjs`, renderLauncher(resolved.command)],
+    [
+      `package/manifests/${resolved.command}.dotslash`,
+      renderDotslash(resolved),
+    ],
   ]);
   // Native zlib output differs by runtime. A published tarball for one version must not.
   const tarball = gzipSync(tar, { mtime: 0 });
@@ -98,18 +102,24 @@ export async function packResolved(resolved: ResolvedCli): Promise<Packed> {
   };
 }
 
-export function packument(packed: Packed, origin: string) {
+export function packument(
+  resolved: PackedRelease,
+  packed: Packed,
+  origin: string,
+) {
+  const unscoped = resolved.packageName.slice("@tr/".length);
   return {
-    name: PACKAGE_NAME,
+    name: resolved.packageName,
     "dist-tags": { latest: packed.version },
     versions: {
       [packed.version]: {
-        name: PACKAGE_NAME,
+        name: resolved.packageName,
         version: packed.version,
-        bin: { gh: LAUNCHER_PATH },
+        bin: { [resolved.command]: `bin/${resolved.command}.mjs` },
         dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
         dist: {
-          tarball: `${origin}/@tr/cli--cli/-/cli--cli-${packed.version}.tgz`,
+          tarball:
+            `${origin}/${resolved.packageName}/-/${unscoped}-${packed.version}.tgz`,
           shasum: packed.shasum,
           integrity: packed.integrity,
         },

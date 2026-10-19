@@ -1,45 +1,29 @@
-import { parseCliRelease, type Release } from "./resolve.ts";
+import { type Release, selectRelease } from "./resolve.ts";
 
-Deno.test("cli/cli release resolution", async (t) => {
-  const release = realRelease();
-  const missing = realRelease();
-  missing.assets = missing.assets.filter((asset) =>
-    !asset.name.includes("windows_arm64")
-  );
-  const badUrl = realRelease();
-  const linux = badUrl.assets.find((asset) =>
-    asset.name === "gh_2.102.0_linux_amd64.tar.gz"
-  );
-  if (!linux) throw new Error("fixture missing linux asset");
-  linux.browser_download_url = "https://example.com/gh.tar.gz";
-
+Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
+  const selected = selectRelease("cli", "cli", realRelease());
   await t.assertSnapshot({
-    resolved: parseCliRelease(release),
-    failures: {
-      tag: failure(() =>
-        parseCliRelease({ ...realRelease(), tag_name: "v2.102.0-rc.1" })
-      ),
-      missing: failure(() => parseCliRelease(missing)),
-      url: failure(() => parseCliRelease(badUrl)),
-    },
+    version: selected.version,
+    command: selected.command,
+    platforms: selected.platforms.map((item) => ({
+      platform: item.platform,
+      assetName: item.assetName,
+      format: item.format ?? "raw",
+    })),
   });
 });
-
-function failure(run: () => unknown): string {
-  try {
-    run();
-    return "did not throw";
-  } catch (error) {
-    return error instanceof Error ? error.message : "unknown error";
-  }
-}
 
 function realRelease(): Release {
   const rows: Array<[string, number, string]> = [
     [
-      "gh_2.102.0_linux_386.deb",
-      14414892,
-      "sha256:759b31942b78c05434a5d958fdacfc66aaf81446e283b4a8b1444104cf9de850",
+      "gh_2.102.0_checksums.txt",
+      1971,
+      "sha256:afe49e9affa232faa8212aed035417166f6ade9b9470acb53d4dbd28c0504e8d",
+    ],
+    [
+      "gh_2.102.0_linux_amd64.deb",
+      15392446,
+      "sha256:7e54a307f90afdc59796c325ec0c49fb09e6c18537727207a8ac7513584ea5b0",
     ],
     [
       "gh_2.102.0_linux_amd64.tar.gz",

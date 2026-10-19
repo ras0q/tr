@@ -1,9 +1,8 @@
+import { excludeAsset, getOSArch, parseAssetName } from "./parse_asset.ts";
+
 /**
- * cli/cli release → DotSlash inputs.
- *
- * Archive paths were taken from the v2.102.0 assets, not from a general rule:
- * linux and macOS archives contain `{archive-stem}/bin/gh`; Windows zips have
- * no stem directory and store the executable at `bin/gh.exe`.
+ * `@tr/<owner>--<repo>` uses the first `--` as the separator.
+ * GitHub owner and repo names are lowercased because npm package names are.
  */
 
 export type ReleaseAsset = {
@@ -18,18 +17,23 @@ export type Release = {
   assets: ReleaseAsset[];
 };
 
-export type DotslashPlatform = {
+export type SelectedPlatform = {
   platform: string;
+  os: "linux" | "darwin" | "windows";
   size: number;
   digest: string;
-  format: "tar.gz" | "zip";
-  path: string;
+  /** Absent for a bare executable. tar.gz covers a `.tgz` asset. */
+  format?: "tar.gz" | "zip";
+  archive: "tar.gz" | "zip" | "raw";
   url: string;
+  assetName: string;
 };
 
-export type ResolvedCli = {
+export type SelectedRelease = {
+  packageName: string;
   version: string;
-  platforms: DotslashPlatform[];
+  command: string;
+  platforms: SelectedPlatform[];
 };
 
 export class ResolveError extends Error {
@@ -39,98 +43,132 @@ export class ResolveError extends Error {
   }
 }
 
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+const PART = /^[a-z0-9_.-]+$/;
+const SEMVER =
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
 const TARGETS: ReadonlyArray<{
-  os: string;
+  os: "linux" | "darwin" | "windows";
   arch: string;
   platform: string;
-  format: "tar.gz" | "zip";
-  entry: (stem: string) => string;
 }> = [
-  {
-    os: "linux",
-    arch: "amd64",
-    platform: "linux-x86_64",
-    format: "tar.gz",
-    entry: (stem) => `${stem}/bin/gh`,
-  },
-  {
-    os: "linux",
-    arch: "arm64",
-    platform: "linux-aarch64",
-    format: "tar.gz",
-    entry: (stem) => `${stem}/bin/gh`,
-  },
-  {
-    os: "macOS",
-    arch: "amd64",
-    platform: "macos-x86_64",
-    format: "zip",
-    entry: (stem) => `${stem}/bin/gh`,
-  },
-  {
-    os: "macOS",
-    arch: "arm64",
-    platform: "macos-aarch64",
-    format: "zip",
-    entry: (stem) => `${stem}/bin/gh`,
-  },
-  {
-    os: "windows",
-    arch: "amd64",
-    platform: "windows-x86_64",
-    format: "zip",
-    entry: () => "bin/gh.exe",
-  },
-  {
-    os: "windows",
-    arch: "arm64",
-    platform: "windows-aarch64",
-    format: "zip",
-    entry: () => "bin/gh.exe",
-  },
+  { os: "linux", arch: "amd64", platform: "linux-x86_64" },
+  { os: "linux", arch: "arm64", platform: "linux-aarch64" },
+  { os: "darwin", arch: "amd64", platform: "macos-x86_64" },
+  { os: "darwin", arch: "arm64", platform: "macos-aarch64" },
+  { os: "windows", arch: "amd64", platform: "windows-x86_64" },
+  { os: "windows", arch: "arm64", platform: "windows-aarch64" },
 ];
 
-export function parseCliRelease(release: Release): ResolvedCli {
+export function parsePackageName(
+  name: string,
+): { owner: string; repo: string } | undefined {
+  if (!name.startsWith("@tr/")) return undefined;
+  const body = name.slice("@tr/".length);
+  const sep = body.indexOf("--");
+  if (sep <= 0 || sep + 2 >= body.length) return undefined;
+  const owner = body.slice(0, sep);
+  const repo = body.slice(sep + 2);
+  if (!PART.test(owner) || !PART.test(repo)) return undefined;
+  return { owner, repo };
+}
+
+export function selectRelease(
+  owner: string,
+  repo: string,
+  release: Release,
+): SelectedRelease {
   const version = versionFromTag(release.tag_name);
-  const platforms = TARGETS.map((target) => {
-    const extension = target.format === "tar.gz" ? "tar.gz" : "zip";
-    const name = `gh_${version}_${target.os}_${target.arch}.${extension}`;
-    const asset = release.assets.find((candidate) => candidate.name === name);
-    if (!asset) throw new ResolveError(`missing asset ${name}`);
-
-    const digest = digestHex(asset.digest, name);
+  const parsed = release.assets.flatMap((asset) => {
+    if (excludeAsset(repo, asset.name)) return [];
+    const info = parseAssetName(asset.name, release.tag_name);
+    const archive = listable(info.format);
+    if (!archive) return [];
+    if (!/^sha256:[a-f0-9]{64}$/.test(asset.digest)) {
+      throw new ResolveError(`unexpected digest for ${asset.name}`);
+    }
     if (!Number.isSafeInteger(asset.size) || asset.size <= 0) {
-      throw new ResolveError(`unexpected size for ${name}`);
+      throw new ResolveError(`unexpected size for ${asset.name}`);
     }
-
-    const url =
-      `https://github.com/cli/cli/releases/download/v${version}/${name}`;
-    if (asset.browser_download_url !== url) {
-      throw new ResolveError(`unexpected url for ${name}`);
+    const url = assetUrl(owner, repo, release.tag_name, asset.name);
+    if (asset.browser_download_url.toLowerCase() !== url.toLowerCase()) {
+      throw new ResolveError(`unexpected url for ${asset.name}`);
     }
-
-    const stem = name.slice(0, name.length - `.${extension}`.length);
-    return {
-      platform: target.platform,
-      size: asset.size,
-      digest,
-      format: target.format,
-      path: target.entry(stem),
-      url,
-    };
+    return [{ asset, info, archive }];
   });
 
-  return { version, platforms };
+  const platforms: SelectedPlatform[] = [];
+  const commands: string[] = [];
+  for (const target of TARGETS) {
+    const chosen = getOSArch(
+      target.os,
+      target.arch,
+      parsed.map((item) => item.info),
+    );
+    if (!chosen) continue;
+    const match = parsed.find((item) => item.info === chosen);
+    if (!match) continue;
+    const command = commandFromTemplate(chosen.template) || repo;
+    commands.push(command);
+    platforms.push({
+      platform: target.platform,
+      os: target.os,
+      size: match.asset.size,
+      digest: match.asset.digest.slice("sha256:".length),
+      format: match.archive === "raw" ? undefined : match.archive,
+      archive: match.archive,
+      url: match.asset.browser_download_url,
+      assetName: match.asset.name,
+    });
+  }
+  if (platforms.length === 0) {
+    throw new ResolveError(`no installable asset for ${owner}/${repo}`);
+  }
+  const command = commands[0];
+  if (commands.some((item) => item !== command)) {
+    throw new ResolveError(`assets disagree on the command name`);
+  }
+  if (!/^[A-Za-z0-9._+-]+$/.test(command)) {
+    throw new ResolveError(`unsupported command name ${command}`);
+  }
+  return {
+    packageName: `@tr/${owner}--${repo}`,
+    version,
+    command,
+    platforms,
+  };
 }
 
 function versionFromTag(tag: string): string {
-  const match = /^v(\d+\.\d+\.\d+)$/.exec(tag);
-  if (!match) throw new ResolveError(`unsupported tag ${tag}`);
-  return match[1];
+  const version = tag.startsWith("v") ? tag.slice(1) : tag;
+  if (!SEMVER.test(version)) throw new ResolveError(`unsupported tag ${tag}`);
+  return version;
 }
 
-function digestHex(digest: string, name: string): string {
-  const match = /^sha256:([a-f0-9]{64})$/.exec(digest);
-  if (!match) throw new ResolveError(`unexpected digest for ${name}`);
-  return match[1];
+function assetUrl(
+  owner: string,
+  repo: string,
+  tag: string,
+  name: string,
+): string {
+  return `https://github.com/${owner}/${repo}/releases/download/${tag}/${name}`;
+}
+
+function listable(format: string): "tar.gz" | "zip" | "raw" | undefined {
+  if (format === "raw") return "raw";
+  if (format === "tar.gz" || format === "tgz") return "tar.gz";
+  if (format === "zip") return "zip";
+  return undefined;
+}
+
+function commandFromTemplate(template: string): string {
+  const head = template.split("{{")[0] ?? "";
+  return head.replace(/[._-]+$/, "");
 }

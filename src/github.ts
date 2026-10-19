@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { type Release, ResolveError } from "./resolve.ts";
+import { NotFoundError, type Release, ResolveError } from "./resolve.ts";
 
 const ReleaseSchema = v.object({
   tag_name: v.string(),
@@ -11,14 +11,15 @@ const ReleaseSchema = v.object({
   })),
 });
 
-const LATEST = "https://api.github.com/repos/cli/cli/releases/latest";
-
 export async function fetchLatestRelease(
+  owner: string,
+  repo: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<Release> {
+  const url = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
   let response: Response;
   try {
-    response = await fetchImpl(LATEST, {
+    response = await fetchImpl(url, {
       headers: {
         accept: "application/vnd.github+json",
         "user-agent": "tr",
@@ -30,6 +31,7 @@ export async function fetchLatestRelease(
     throw new ResolveError("GitHub release request failed");
   }
 
+  if (response.status === 404) throw new NotFoundError(`${owner}/${repo}`);
   if (!response.ok) {
     throw new ResolveError(`GitHub release request failed: ${response.status}`);
   }
@@ -46,4 +48,23 @@ export async function fetchLatestRelease(
     throw new ResolveError("GitHub release did not match the expected shape");
   }
   return parsed.output;
+}
+
+export async function fetchAsset(
+  url: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Uint8Array> {
+  try {
+    const response = await fetchImpl(url, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(600_000),
+    });
+    if (!response.ok) {
+      throw new ResolveError(`asset download failed: ${response.status}`);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  } catch (error) {
+    if (error instanceof ResolveError) throw error;
+    throw new ResolveError(`asset download failed: ${url}`);
+  }
 }

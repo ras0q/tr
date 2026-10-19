@@ -1,0 +1,9 @@
+export const snapshot = {};
+
+snapshot[`chooseExecutable reads gh's two archive layouts 1`] = `
+{
+  goreleaser: "foo_1.0.0_linux_amd64/foo",
+  linux: "gh_2.102.0_linux_amd64/bin/gh",
+  windows: "bin/gh.exe",
+}
+`;

@@ -23,7 +23,8 @@ deno outdated --latest
 `deno task test` skips `e2e/`. `deno task e2e` copies `e2e/package.json` to a
 temp directory, points `.npmrc` at a registry on a free port, and runs
 `npm install`. It needs network access to GitHub and to the npm registry for
-`fb-dotslash`.
+`fb-dotslash`. The registry downloads each selected release archive to find the
+executable, so the test takes about as long as those downloads.
 
 Update snapshots after an intentional output change, then review the `.snap`
 diff:

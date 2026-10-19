@@ -37,6 +37,8 @@ Deno.test("npm install @tr/cli--cli in a package directory", async () => {
         ...Deno.env.toObject(),
         NPM_CONFIG_UPDATE_NOTIFIER: "false",
         npm_config_cache: `${dir}/.npm-cache`,
+        npm_config_fetch_timeout: "900000",
+        npm_config_fetch_retries: "0",
       },
     }).output();
     if (install.code !== 0) {
