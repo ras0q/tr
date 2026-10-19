@@ -11,6 +11,7 @@ import {
 import {
   NotFoundError,
   parsePackageName,
+  parseTarballName,
   type Release,
   ResolveError,
   type SelectedRelease,
@@ -48,16 +49,13 @@ export function createApp(
   });
 
   app.get("/@tr/:name/-/:file{.+\\.tgz}", async (c) => {
-    const id = parsePackageName(`@tr/${c.req.param("name")}`);
-    if (!id) return c.notFound();
-    const unscoped = `${id.owner}--${id.repo}`;
-    const file = c.req.param("file");
-    if (!file.startsWith(`${unscoped}-`) || !file.endsWith(".tgz")) {
-      return c.notFound();
-    }
-    const built = await current(id, latest, readAsset, cache);
-    const version = file.slice(unscoped.length + 1, -".tgz".length);
-    if (built.packed.version !== version) return c.notFound();
+    const requested = parseTarballName(
+      c.req.param("name"),
+      c.req.param("file"),
+    );
+    if (!requested) return c.notFound();
+    const built = await current(requested.id, latest, readAsset, cache);
+    if (built.packed.version !== requested.version) return c.notFound();
     return c.body(built.packed.tarball, 200, {
       "content-type": "application/octet-stream",
     });
@@ -111,14 +109,7 @@ async function materialize(
     }
     // One archive at a time. Parallel downloads on a slow link make every
     // request miss the timeout, so the whole package fails together.
-    const bytes = await readAsset(item.url);
-    if (bytes.byteLength !== item.size) {
-      throw new ResolveError(`unexpected size for ${item.assetName}`);
-    }
-    const digest = createHash("sha256").update(bytes).digest("hex");
-    if (digest !== item.digest) {
-      throw new ResolveError(`unexpected digest for ${item.assetName}`);
-    }
+    const bytes = verifiedBytes(await readAsset(item.url), item);
     const entries = await listArchive(bytes, item.archive);
     platforms.push({
       ...item,
@@ -126,4 +117,18 @@ async function materialize(
     });
   }
   return { ...selected, platforms };
+}
+
+function verifiedBytes(
+  bytes: Uint8Array,
+  asset: { assetName: string; size: number; digest: string },
+): Uint8Array {
+  if (bytes.byteLength !== asset.size) {
+    throw new ResolveError(`unexpected size for ${asset.assetName}`);
+  }
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  if (digest !== asset.digest) {
+    throw new ResolveError(`unexpected digest for ${asset.assetName}`);
+  }
+  return bytes;
 }

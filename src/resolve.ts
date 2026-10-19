@@ -1,33 +1,52 @@
+import * as v from "valibot";
 import { excludeAsset, getOSArch, parseAssetName } from "./parse_asset.ts";
 
 /**
  * `@tr/<owner>--<repo>` uses the first `--` as the separator.
  * GitHub owner and repo names are lowercased because npm package names are.
+ *
+ * Untrusted JSON is parsed once into these types. Later steps use the result
+ * and do not re-read the original strings.
  */
+
+declare const semver: unique symbol;
+declare const sha256: unique symbol;
+declare const byteSize: unique symbol;
+
+export type Semver = string & { readonly [semver]: never };
+export type Sha256 = string & { readonly [sha256]: never };
+export type ByteSize = number & { readonly [byteSize]: never };
+
+export type PackageId = { owner: string; repo: string };
 
 export type ReleaseAsset = {
   name: string;
-  size: number;
-  digest: string;
-  browser_download_url: string;
+  size: ByteSize;
+  digest: Sha256;
+  url: string;
 };
 
 export type Release = {
-  tag_name: string;
+  tag: string;
+  version: Semver;
   assets: ReleaseAsset[];
 };
 
-export type SelectedPlatform = {
+type PlatformBase = {
   platform: string;
   os: "linux" | "darwin" | "windows";
-  size: number;
-  digest: string;
-  /** Absent for a bare executable. tar.gz covers a `.tgz` asset. */
-  format?: "tar.gz" | "zip";
-  archive: "tar.gz" | "zip" | "raw";
+  size: ByteSize;
+  digest: Sha256;
   url: string;
   assetName: string;
 };
+
+export type SelectedPlatform =
+  & PlatformBase
+  & (
+    | { archive: "raw" }
+    | { archive: "tar.gz" | "zip" }
+  );
 
 export type SelectedRelease = {
   packageName: string;
@@ -67,9 +86,17 @@ const TARGETS: ReadonlyArray<{
   { os: "windows", arch: "arm64", platform: "windows-aarch64" },
 ];
 
-export function parsePackageName(
-  name: string,
-): { owner: string; repo: string } | undefined {
+const ReleaseShape = v.object({
+  tag_name: v.string(),
+  assets: v.array(v.object({
+    name: v.string(),
+    size: v.number(),
+    digest: v.string(),
+    browser_download_url: v.string(),
+  })),
+});
+
+export function parsePackageName(name: string): PackageId | undefined {
   if (!name.startsWith("@tr/")) return undefined;
   const body = name.slice("@tr/".length);
   const sep = body.indexOf("--");
@@ -80,28 +107,48 @@ export function parsePackageName(
   return { owner, repo };
 }
 
+/** `cli--cli-2.102.0.tgz` → the package and the version the client asked for. */
+export function parseTarballName(
+  name: string,
+  file: string,
+): { id: PackageId; version: Semver } | undefined {
+  const id = parsePackageName(`@tr/${name}`);
+  if (!id) return undefined;
+  const unscoped = `${id.owner}--${id.repo}`;
+  const prefix = `${unscoped}-`;
+  if (!file.startsWith(prefix) || !file.endsWith(".tgz")) return undefined;
+  const version = file.slice(prefix.length, -".tgz".length);
+  if (!SEMVER.test(version)) return undefined;
+  return { id, version: version as Semver };
+}
+
+export function parseRelease(
+  owner: string,
+  repo: string,
+  input: unknown,
+): Release {
+  const parsed = v.safeParse(ReleaseShape, input);
+  if (!parsed.success) {
+    throw new ResolveError("GitHub release did not match the expected shape");
+  }
+  const { tag_name: tag, assets } = parsed.output;
+  return {
+    tag,
+    version: parseVersion(tag),
+    assets: assets.map((asset) => parseReleaseAsset(owner, repo, tag, asset)),
+  };
+}
+
 export function selectRelease(
   owner: string,
   repo: string,
   release: Release,
 ): SelectedRelease {
-  const version = versionFromTag(release.tag_name);
   const parsed = release.assets.flatMap((asset) => {
     if (excludeAsset(repo, asset.name)) return [];
-    const info = parseAssetName(asset.name, release.tag_name);
+    const info = parseAssetName(asset.name, release.tag);
     const archive = listable(info.format);
     if (!archive) return [];
-    if (!/^sha256:[a-f0-9]{64}$/.test(asset.digest)) {
-      throw new ResolveError(`unexpected digest for ${asset.name}`);
-    }
-    if (!Number.isSafeInteger(asset.size) || asset.size <= 0) {
-      throw new ResolveError(`unexpected size for ${asset.name}`);
-    }
-    const url =
-      `https://github.com/${owner}/${repo}/releases/download/${release.tag_name}/${asset.name}`;
-    if (asset.browser_download_url.toLowerCase() !== url.toLowerCase()) {
-      throw new ResolveError(`unexpected url for ${asset.name}`);
-    }
     return [{ asset, info, archive }];
   });
 
@@ -116,16 +163,14 @@ export function selectRelease(
     if (!chosen) continue;
     const match = parsed.find((item) => item.info === chosen);
     if (!match) continue;
-    const command = commandFromTemplate(chosen.template) || repo;
-    commands.push(command);
+    commands.push(parseCommand(chosen.template, repo));
     platforms.push({
       platform: target.platform,
       os: target.os,
       size: match.asset.size,
-      digest: match.asset.digest.slice("sha256:".length),
-      format: match.archive === "raw" ? undefined : match.archive,
+      digest: match.asset.digest,
       archive: match.archive,
-      url: match.asset.browser_download_url,
+      url: match.asset.url,
       assetName: match.asset.name,
     });
   }
@@ -136,21 +181,56 @@ export function selectRelease(
   if (commands.some((item) => item !== command)) {
     throw new ResolveError(`assets disagree on the command name`);
   }
-  if (!/^[A-Za-z0-9._+-]+$/.test(command)) {
-    throw new ResolveError(`unsupported command name ${command}`);
-  }
   return {
     packageName: `@tr/${owner}--${repo}`,
-    version,
+    version: release.version,
     command,
     platforms,
   };
 }
 
-function versionFromTag(tag: string): string {
+function parseVersion(tag: string): Semver {
   const version = tag.startsWith("v") ? tag.slice(1) : tag;
   if (!SEMVER.test(version)) throw new ResolveError(`unsupported tag ${tag}`);
-  return version;
+  return version as Semver;
+}
+
+function parseReleaseAsset(
+  owner: string,
+  repo: string,
+  tag: string,
+  asset: {
+    name: string;
+    size: number;
+    digest: string;
+    browser_download_url: string;
+  },
+): ReleaseAsset {
+  const digest = /^sha256:([a-f0-9]{64})$/.exec(asset.digest);
+  if (!digest) throw new ResolveError(`unexpected digest for ${asset.name}`);
+  if (!Number.isSafeInteger(asset.size) || asset.size <= 0) {
+    throw new ResolveError(`unexpected size for ${asset.name}`);
+  }
+  const url =
+    `https://github.com/${owner}/${repo}/releases/download/${tag}/${asset.name}`;
+  if (asset.browser_download_url.toLowerCase() !== url.toLowerCase()) {
+    throw new ResolveError(`unexpected url for ${asset.name}`);
+  }
+  return {
+    name: asset.name,
+    size: asset.size as ByteSize,
+    digest: digest[1] as Sha256,
+    url,
+  };
+}
+
+function parseCommand(template: string, repo: string): string {
+  const command = (template.split("{{")[0] ?? "").replace(/[._-]+$/, "") ||
+    repo;
+  if (!/^[A-Za-z0-9._+-]+$/.test(command)) {
+    throw new ResolveError(`unsupported command name ${command}`);
+  }
+  return command;
 }
 
 function listable(format: string): "tar.gz" | "zip" | "raw" | undefined {
@@ -158,9 +238,4 @@ function listable(format: string): "tar.gz" | "zip" | "raw" | undefined {
   if (format === "tar.gz" || format === "tgz") return "tar.gz";
   if (format === "zip") return "zip";
   return undefined;
-}
-
-function commandFromTemplate(template: string): string {
-  const head = template.split("{{")[0] ?? "";
-  return head.replace(/[._-]+$/, "");
 }

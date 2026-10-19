@@ -3,20 +3,19 @@ import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync, zipSync } from "fflate";
 import { extract, pack as createTarPack } from "tar-stream";
 import { createApp } from "./app.ts";
-import { type Release } from "./resolve.ts";
+import { parseRelease } from "./resolve.ts";
 
 const encode = new TextEncoder();
 const origin = "http://127.0.0.1:8787";
 const fixtureBytes = new Map<string, Uint8Array>();
 
 Deno.test("registry responses", async (t) => {
-  const fixture = await ghFixture();
+  const body = await ghBody();
   let tamper = false;
   const app = createApp(() => {
-    if (!tamper) return Promise.resolve(fixture);
-    const release = structuredClone(fixture);
-    release.assets[0].size = 99;
-    return Promise.resolve(release);
+    const release = structuredClone(body);
+    if (tamper) release.assets[0].size = 99;
+    return Promise.resolve(parseRelease("cli", "cli", release));
   }, (url) => {
     const bytes = fixtureBytes.get(url);
     return bytes ? Promise.resolve(bytes) : Promise.reject(new Error(url));
@@ -35,7 +34,10 @@ Deno.test("registry responses", async (t) => {
   const againBody = await again.json();
   const missing = await app.request(`${origin}/not-a-package`);
   const brokenApp = createApp(
-    () => Promise.resolve({ tag_name: "nope", assets: [] }),
+    () =>
+      Promise.resolve(
+        parseRelease("cli", "cli", { tag_name: "nope", assets: [] }),
+      ),
     () => Promise.reject(new Error("unread")),
   );
   const broken = await brokenApp.request(`${origin}/@tr%2fcli--cli`);
@@ -50,7 +52,7 @@ Deno.test("registry responses", async (t) => {
   });
 });
 
-async function ghFixture(): Promise<Release> {
+async function ghBody() {
   const specs = [
     ["linux", "amd64", "tar.gz"],
     ["linux", "arm64", "tar.gz"],

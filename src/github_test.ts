@@ -8,7 +8,8 @@ Deno.test("GitHub release schema", async (t) => {
       name: "gh_2.102.0_linux_amd64.tar.gz",
       size: 10,
       digest: "sha256:" + "ab".repeat(32),
-      browser_download_url: "https://example.com/gh.tar.gz",
+      browser_download_url:
+        "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_amd64.tar.gz",
       extra: true,
     }],
   };
@@ -32,5 +33,16 @@ Deno.test("GitHub release schema", async (t) => {
     ),
     invalidJson: await message(new Response("nope", { status: 200 })),
     shape: await message(Response.json({ tag_name: 1, assets: [] })),
+    unexpectedUrl: await message(Response.json({
+      ...release,
+      assets: [{
+        ...release.assets[0],
+        browser_download_url: "https://example.com/gh.tar.gz",
+      }],
+    })),
+    unexpectedDigest: await message(Response.json({
+      ...release,
+      assets: [{ ...release.assets[0], digest: "nope" }],
+    })),
   });
 });

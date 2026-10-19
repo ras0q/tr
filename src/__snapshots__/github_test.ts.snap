@@ -7,14 +7,17 @@ snapshot[`GitHub release schema 1`] = `
   parsed: {
     assets: [
       {
-        browser_download_url: "https://example.com/gh.tar.gz",
-        digest: "sha256:abababababababababababababababababababababababababababababababab",
+        digest: "abababababababababababababababababababababababababababababababab",
         name: "gh_2.102.0_linux_amd64.tar.gz",
         size: 10,
+        url: "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_amd64.tar.gz",
       },
     ],
-    tag_name: "v2.102.0",
+    tag: "v2.102.0",
+    version: "2.102.0",
   },
   shape: "GitHub release did not match the expected shape",
+  unexpectedDigest: "unexpected digest for gh_2.102.0_linux_amd64.tar.gz",
+  unexpectedUrl: "unexpected url for gh_2.102.0_linux_amd64.tar.gz",
 }
 `;

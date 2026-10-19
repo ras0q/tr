@@ -1,4 +1,4 @@
-import { selectRelease } from "./resolve.ts";
+import { parseRelease, selectRelease } from "./resolve.ts";
 
 Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
   const names = [
@@ -43,23 +43,27 @@ Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
       "sha256:5dcf12aa8525eabd0c46ec414f323ab6cf65229fc2cd46543cc705001bbaf223",
     ],
   ] as const;
-  const selected = selectRelease("cli", "cli", {
-    tag_name: "v2.102.0",
-    assets: names.map(([name, size, digest]) => ({
-      name,
-      size,
-      digest,
-      browser_download_url:
-        `https://github.com/cli/cli/releases/download/v2.102.0/${name}`,
-    })),
-  });
+  const selected = selectRelease(
+    "cli",
+    "cli",
+    parseRelease("cli", "cli", {
+      tag_name: "v2.102.0",
+      assets: names.map(([name, size, digest]) => ({
+        name,
+        size,
+        digest,
+        browser_download_url:
+          `https://github.com/cli/cli/releases/download/v2.102.0/${name}`,
+      })),
+    }),
+  );
   await t.assertSnapshot({
     version: selected.version,
     command: selected.command,
-    platforms: selected.platforms.map(({ platform, assetName, format }) => ({
+    platforms: selected.platforms.map(({ platform, assetName, archive }) => ({
       platform,
       assetName,
-      format: format ?? "raw",
+      archive,
     })),
   });
 });

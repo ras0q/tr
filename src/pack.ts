@@ -28,7 +28,7 @@ function renderDotslash(resolved: PackedRelease): string {
       size: item.size,
       hash: "sha256",
       digest: item.digest,
-      ...(item.format ? { format: item.format } : {}),
+      ...(item.archive === "raw" ? {} : { format: item.archive }),
       path: item.path,
       providers: [{ url: item.url }],
     };

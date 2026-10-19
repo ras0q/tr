@@ -1,15 +1,9 @@
-import * as v from "valibot";
-import { NotFoundError, type Release, ResolveError } from "./resolve.ts";
-
-const ReleaseSchema = v.object({
-  tag_name: v.string(),
-  assets: v.array(v.object({
-    name: v.string(),
-    size: v.number(),
-    digest: v.string(),
-    browser_download_url: v.string(),
-  })),
-});
+import {
+  NotFoundError,
+  parseRelease,
+  type Release,
+  ResolveError,
+} from "./resolve.ts";
 
 export async function fetchLatestRelease(
   owner: string,
@@ -43,11 +37,7 @@ export async function fetchLatestRelease(
     throw new ResolveError("GitHub release request failed");
   }
 
-  const parsed = v.safeParse(ReleaseSchema, body);
-  if (!parsed.success) {
-    throw new ResolveError("GitHub release did not match the expected shape");
-  }
-  return parsed.output;
+  return parseRelease(owner, repo, body);
 }
 
 export async function fetchAsset(
