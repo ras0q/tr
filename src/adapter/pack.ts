@@ -2,14 +2,10 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { gzipSync } from "fflate";
 import { pack as createTarPack } from "tar-stream";
-import { type SelectedPlatform, type SelectedRelease } from "./resolve.ts";
+import { type PackageManifest } from "../core/resolve.ts";
 
 /** Pinned so a given release always produces the same tarball bytes. */
 const FB_DOTSLASH_VERSION = "0.5.8";
-
-export type PackedRelease = SelectedRelease & {
-  platforms: Array<SelectedPlatform & { path: string }>;
-};
 
 export type Packed = {
   version: string;
@@ -18,7 +14,7 @@ export type Packed = {
   integrity: string;
 };
 
-function renderDotslash(resolved: PackedRelease): string {
+function renderDotslash(resolved: PackageManifest): string {
   const platforms: Record<string, unknown> = {};
   const ordered = [...resolved.platforms].sort((a, b) =>
     a.platform.localeCompare(b.platform)
@@ -37,7 +33,7 @@ function renderDotslash(resolved: PackedRelease): string {
   return `#!/usr/bin/env dotslash\n${body}\n`;
 }
 
-function renderPackageJson(resolved: PackedRelease): string {
+function renderPackageJson(resolved: PackageManifest): string {
   const launcher = `bin/${resolved.command}.mjs`;
   return JSON.stringify(
     {
@@ -81,7 +77,7 @@ child.on("exit", (code, signal) => {
 `;
 }
 
-export async function packResolved(resolved: PackedRelease): Promise<Packed> {
+export async function packResolved(resolved: PackageManifest): Promise<Packed> {
   const tar = await tarFiles([
     ["package/package.json", renderPackageJson(resolved)],
     [`package/bin/${resolved.command}.mjs`, renderLauncher(resolved.command)],
@@ -103,7 +99,7 @@ export async function packResolved(resolved: PackedRelease): Promise<Packed> {
 }
 
 export function packument(
-  resolved: PackedRelease,
+  resolved: PackageManifest,
   packed: Packed,
   origin: string,
 ) {

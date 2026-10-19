@@ -1,12 +1,8 @@
-import * as v from "valibot";
 import { excludeAsset, getOSArch, parseAssetName } from "./parse_asset.ts";
 
 /**
  * `@tr/<owner>--<repo>` uses the first `--` as the separator.
  * GitHub owner and repo names are lowercased because npm package names are.
- *
- * Untrusted JSON is parsed once into these types. Later steps use the result
- * and do not re-read the original strings.
  */
 
 declare const semver: unique symbol;
@@ -55,6 +51,10 @@ export type SelectedRelease = {
   platforms: SelectedPlatform[];
 };
 
+export type PackageManifest = SelectedRelease & {
+  platforms: Array<SelectedPlatform & { path: string }>;
+};
+
 export class ResolveError extends Error {
   constructor(message: string) {
     super(message);
@@ -86,16 +86,6 @@ const TARGETS: ReadonlyArray<{
   { os: "windows", arch: "arm64", platform: "windows-aarch64" },
 ];
 
-const ReleaseShape = v.object({
-  tag_name: v.string(),
-  assets: v.array(v.object({
-    name: v.string(),
-    size: v.number(),
-    digest: v.string(),
-    browser_download_url: v.string(),
-  })),
-});
-
 export function parsePackageName(name: string): PackageId | undefined {
   if (!name.startsWith("@tr/")) return undefined;
   const body = name.slice("@tr/".length);
@@ -122,20 +112,33 @@ export function parseTarballName(
   return { id, version: version as Semver };
 }
 
-export function parseRelease(
-  owner: string,
-  repo: string,
-  input: unknown,
-): Release {
-  const parsed = v.safeParse(ReleaseShape, input);
-  if (!parsed.success) {
-    throw new ResolveError("GitHub release did not match the expected shape");
-  }
-  const { tag_name: tag, assets } = parsed.output;
+export function releaseFrom(input: {
+  tag: string;
+  assets: readonly {
+    name: string;
+    size: number;
+    digest: string;
+    url: string;
+  }[];
+}): Release {
+  const version = parseVersion(input.tag);
   return {
-    tag,
-    version: parseVersion(tag),
-    assets: assets.map((asset) => parseReleaseAsset(owner, repo, tag, asset)),
+    tag: input.tag,
+    version,
+    assets: input.assets.map((asset) => {
+      if (!/^[a-f0-9]{64}$/.test(asset.digest)) {
+        throw new ResolveError(`unexpected digest for ${asset.name}`);
+      }
+      if (!Number.isSafeInteger(asset.size) || asset.size <= 0) {
+        throw new ResolveError(`unexpected size for ${asset.name}`);
+      }
+      return {
+        name: asset.name,
+        size: asset.size as ByteSize,
+        digest: asset.digest as Sha256,
+        url: asset.url,
+      };
+    }),
   };
 }
 
@@ -195,35 +198,6 @@ function parseVersion(tag: string): Semver {
   return version as Semver;
 }
 
-function parseReleaseAsset(
-  owner: string,
-  repo: string,
-  tag: string,
-  asset: {
-    name: string;
-    size: number;
-    digest: string;
-    browser_download_url: string;
-  },
-): ReleaseAsset {
-  const digest = /^sha256:([a-f0-9]{64})$/.exec(asset.digest);
-  if (!digest) throw new ResolveError(`unexpected digest for ${asset.name}`);
-  if (!Number.isSafeInteger(asset.size) || asset.size <= 0) {
-    throw new ResolveError(`unexpected size for ${asset.name}`);
-  }
-  const url =
-    `https://github.com/${owner}/${repo}/releases/download/${tag}/${asset.name}`;
-  if (asset.browser_download_url.toLowerCase() !== url.toLowerCase()) {
-    throw new ResolveError(`unexpected url for ${asset.name}`);
-  }
-  return {
-    name: asset.name,
-    size: asset.size as ByteSize,
-    digest: digest[1] as Sha256,
-    url,
-  };
-}
-
 function parseCommand(template: string, repo: string): string {
   const command = (template.split("{{")[0] ?? "").replace(/[._-]+$/, "") ||
     repo;
@@ -238,4 +212,40 @@ function listable(format: string): "tar.gz" | "zip" | "raw" | undefined {
   if (format === "tar.gz" || format === "tgz") return "tar.gz";
   if (format === "zip") return "zip";
   return undefined;
+}
+
+/** The Windows zip has no top-level directory, so the path comes from the member list. */
+export function chooseExecutable(
+  paths: readonly string[],
+  command: string,
+  os: string,
+): string {
+  const files = paths.map(normalizePath).filter((path) => path !== "");
+  const want = new Set(
+    os === "windows"
+      ? [command.toLowerCase(), `${command.toLowerCase()}.exe`]
+      : [command.toLowerCase()],
+  );
+  const matches = files.filter((path) =>
+    want.has(path.slice(path.lastIndexOf("/") + 1).toLowerCase())
+  );
+  const exe = matches.filter((path) => path.toLowerCase().endsWith(".exe"));
+  const pool = os === "windows" && exe.length > 0 ? exe : matches;
+  const binned = pool.filter((path) => path.split("/").includes("bin"));
+  const ranked = (binned.length > 0 ? binned : pool).toSorted((a, b) =>
+    a.length - b.length || a.localeCompare(b)
+  );
+  if (ranked.length === 0) {
+    throw new ResolveError(`no executable named ${command}`);
+  }
+  if (ranked.length > 1 && ranked[0].length === ranked[1].length) {
+    throw new ResolveError(`ambiguous executable for ${command}`);
+  }
+  return ranked[0];
+}
+
+function normalizePath(path: string): string {
+  const normalized = path.replaceAll("\\", "/").replace(/^\.\//, "");
+  if (normalized === "" || normalized.split("/").includes("..")) return "";
+  return normalized;
 }

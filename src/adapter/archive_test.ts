@@ -1,7 +1,8 @@
 import { Buffer } from "node:buffer";
 import { gzipSync, zipSync } from "fflate";
 import { pack as createTarPack } from "tar-stream";
-import { chooseExecutable, listArchive } from "./archive.ts";
+import { listArchive } from "./archive.ts";
+import { chooseExecutable } from "../core/resolve.ts";
 
 const encode = new TextEncoder();
 
