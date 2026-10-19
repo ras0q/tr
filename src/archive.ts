@@ -33,7 +33,7 @@ export function chooseExecutable(
       : [command.toLowerCase()],
   );
   const matches = files.filter((path) =>
-    want.has(baseName(path).toLowerCase())
+    want.has(path.slice(path.lastIndexOf("/") + 1).toLowerCase())
   );
   const exe = matches.filter((path) => path.toLowerCase().endsWith(".exe"));
   const pool = os === "windows" && exe.length > 0 ? exe : matches;
@@ -71,8 +71,4 @@ function normalizePath(path: string): string {
   const normalized = path.replaceAll("\\", "/").replace(/^\.\//, "");
   if (normalized === "" || normalized.split("/").includes("..")) return "";
   return normalized;
-}
-
-function baseName(path: string): string {
-  return path.slice(path.lastIndexOf("/") + 1);
 }

@@ -220,29 +220,19 @@ export function getOSArch(
       continue;
     }
     if (asset.format === "" || asset.format === FORMAT_RAW) {
-      raw = better(raw, asset);
+      raw = !raw || prefer(asset, raw) ? asset : raw;
       continue;
     }
-    archive = better(archive, asset);
+    archive = !archive || prefer(asset, archive) ? asset : archive;
   }
   return archive ?? raw;
-}
-
-function better(
-  chosen: AssetInfo | undefined,
-  candidate: AssetInfo,
-): AssetInfo {
-  if (!chosen || prefer(candidate, chosen)) return candidate;
-  return chosen;
 }
 
 function prefer(candidate: AssetInfo, incumbent: AssetInfo): boolean {
   if (candidate.score !== incumbent.score) {
     return candidate.score > incumbent.score;
   }
-  if (
-    namedAfter(incumbent, candidate) || namedAfter(candidate, incumbent)
-  ) {
+  if (namedAfter(incumbent, candidate) || namedAfter(candidate, incumbent)) {
     return namedAfter(incumbent, candidate);
   }
   const incumbentBrace = incumbent.template.indexOf("{");
@@ -330,9 +320,7 @@ function arm32Spellings(asset: string): string[] {
   const found: string[] = [];
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
-    if (
-      ARM32.has(word) || word.startsWith("arm32") || word.endsWith("eabi")
-    ) {
+    if (ARM32.has(word) || word.startsWith("arm32") || word.endsWith("eabi")) {
       found.push(word);
       continue;
     }

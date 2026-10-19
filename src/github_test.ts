@@ -12,28 +12,25 @@ Deno.test("GitHub release schema", async (t) => {
       extra: true,
     }],
   };
+  const message = async (response: Response) => {
+    try {
+      await fetchLatestRelease("cli", "cli", () => Promise.resolve(response));
+      return "did not throw";
+    } catch (error) {
+      return error instanceof Error ? error.message : "unknown error";
+    }
+  };
 
   await t.assertSnapshot({
-    parsed: await fetchLatestRelease("cli", "cli", () => json(release)),
-    httpStatus: await failure(() =>
-      json({ tag_name: "v1.0.0", assets: [] }, 500)
+    parsed: await fetchLatestRelease(
+      "cli",
+      "cli",
+      () => Promise.resolve(Response.json(release)),
     ),
-    invalidJson: await failure(() =>
-      Promise.resolve(new Response("nope", { status: 200 }))
+    httpStatus: await message(
+      Response.json({ tag_name: "v1.0.0", assets: [] }, { status: 500 }),
     ),
-    shape: await failure(() => json({ tag_name: 1, assets: [] })),
+    invalidJson: await message(new Response("nope", { status: 200 })),
+    shape: await message(Response.json({ tag_name: 1, assets: [] })),
   });
 });
-
-function json(body: unknown, status = 200): Promise<Response> {
-  return Promise.resolve(Response.json(body, { status }));
-}
-
-async function failure(load: () => Promise<Response>): Promise<string> {
-  try {
-    await fetchLatestRelease("cli", "cli", load);
-    return "did not throw";
-  } catch (error) {
-    return error instanceof Error ? error.message : "unknown error";
-  }
-}

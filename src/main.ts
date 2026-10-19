@@ -1,12 +1,8 @@
 import { createApp } from "./app.ts";
 import { fetchAsset, fetchLatestRelease } from "./github.ts";
 
-const app = createApp(
-  { latest: fetchLatestRelease },
-  fetchAsset,
-);
+const app = createApp(fetchLatestRelease, fetchAsset);
 
-// The host (deno serve, a Worker, Bun) binds the socket. This module only handles requests.
-export default {
-  fetch: app.fetch,
-};
+// `deno serve` owns the socket and requires a default export with `fetch`.
+// Hono's fetch is that handler, so this module stays free of Deno.serve.
+export default { fetch: app.fetch };

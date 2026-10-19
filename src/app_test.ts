@@ -5,22 +5,22 @@ import { extract, pack as createTarPack } from "tar-stream";
 import { createApp } from "./app.ts";
 import { type Release } from "./resolve.ts";
 
+const encode = new TextEncoder();
+const origin = "http://127.0.0.1:8787";
+const fixtureBytes = new Map<string, Uint8Array>();
+
 Deno.test("registry responses", async (t) => {
   const fixture = await ghFixture();
   let tamper = false;
-  const app = createApp({
-    latest: () => {
-      if (!tamper) return Promise.resolve(fixture);
-      const release = structuredClone(fixture);
-      release.assets[0].size = 99;
-      return Promise.resolve(release);
-    },
+  const app = createApp(() => {
+    if (!tamper) return Promise.resolve(fixture);
+    const release = structuredClone(fixture);
+    release.assets[0].size = 99;
+    return Promise.resolve(release);
   }, (url) => {
     const bytes = fixtureBytes.get(url);
-    if (!bytes) return Promise.reject(new Error(url));
-    return Promise.resolve(bytes);
+    return bytes ? Promise.resolve(bytes) : Promise.reject(new Error(url));
   });
-  const origin = "http://127.0.0.1:8787";
 
   const meta = await app.request(`${origin}/@tr%2fcli--cli`);
   const packument = await meta.json();
@@ -34,9 +34,10 @@ Deno.test("registry responses", async (t) => {
   const again = await app.request(`${origin}/@tr%2fcli--cli`);
   const againBody = await again.json();
   const missing = await app.request(`${origin}/not-a-package`);
-  const brokenApp = createApp({
-    latest: () => Promise.resolve({ tag_name: "nope", assets: [] }),
-  }, () => Promise.reject(new Error("unread")));
+  const brokenApp = createApp(
+    () => Promise.resolve({ tag_name: "nope", assets: [] }),
+    () => Promise.reject(new Error("unread")),
+  );
   const broken = await brokenApp.request(`${origin}/@tr%2fcli--cli`);
 
   await t.assertSnapshot({
@@ -48,8 +49,6 @@ Deno.test("registry responses", async (t) => {
     broken: { status: broken.status, body: await broken.text() },
   });
 });
-
-const fixtureBytes = new Map<string, Uint8Array>();
 
 async function ghFixture(): Promise<Release> {
   const specs = [
@@ -67,9 +66,9 @@ async function ghFixture(): Promise<Release> {
     const bytes = ext === "tar.gz"
       ? await tarGz({ [`gh_2.102.0_${os}_${arch}/bin/gh`]: "bin" })
       : zipSync({
-        "LICENSE": text("license"),
+        "LICENSE": encode.encode("license"),
         [os === "windows" ? "bin/gh.exe" : `gh_2.102.0_${os}_${arch}/bin/gh`]:
-          text("bin"),
+          encode.encode("bin"),
       }, { mtime: new Date("1980-01-01T00:00:00Z") });
     fixtureBytes.set(url, bytes);
     assets.push({
@@ -82,33 +81,28 @@ async function ghFixture(): Promise<Release> {
   return { tag_name: "v2.102.0", assets };
 }
 
-function text(value: string): Uint8Array {
-  return new TextEncoder().encode(value);
-}
-
-function tarGz(files: Record<string, string>): Promise<Uint8Array> {
+async function tarGz(files: Record<string, string>): Promise<Uint8Array> {
   const archive = createTarPack();
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {
-    archive.on("data", (chunk: unknown) => {
-      chunks.push(Buffer.from(chunk as Uint8Array));
-    });
+    archive.on(
+      "data",
+      (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)),
+    );
     archive.on("end", () => resolve(Buffer.concat(chunks)));
     archive.on("error", reject);
   });
-  const write = async () => {
-    for (const [name, body] of Object.entries(files)) {
-      await new Promise<void>((resolve, reject) => {
-        archive.entry(
-          { name, mode: 0o755, mtime: new Date(0) },
-          Buffer.from(body),
-          (error) => error ? reject(error) : resolve(),
-        );
-      });
-    }
-    archive.finalize();
-  };
-  return write().then(async () => gzipSync(await done, { mtime: 0 }));
+  for (const [name, body] of Object.entries(files)) {
+    await new Promise<void>((resolve, reject) => {
+      archive.entry(
+        { name, mode: 0o755, mtime: new Date(0) },
+        Buffer.from(body),
+        (error) => error ? reject(error) : resolve(),
+      );
+    });
+  }
+  archive.finalize();
+  return gzipSync(await done, { mtime: 0 });
 }
 
 function filesInTarball(bytes: Uint8Array): Promise<Record<string, string>> {
@@ -117,9 +111,10 @@ function filesInTarball(bytes: Uint8Array): Promise<Record<string, string>> {
   const done = new Promise<Record<string, string>>((resolve, reject) => {
     archive.on("entry", (header, stream, next) => {
       const chunks: Buffer[] = [];
-      stream.on("data", (chunk: unknown) => {
-        chunks.push(Buffer.from(chunk as Uint8Array));
-      });
+      stream.on(
+        "data",
+        (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)),
+      );
       stream.on("end", () => {
         files[header.name] = Buffer.concat(chunks).toString("utf8");
         next();

@@ -1,20 +1,7 @@
-import { type Release, selectRelease } from "./resolve.ts";
+import { selectRelease } from "./resolve.ts";
 
 Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
-  const selected = selectRelease("cli", "cli", realRelease());
-  await t.assertSnapshot({
-    version: selected.version,
-    command: selected.command,
-    platforms: selected.platforms.map((item) => ({
-      platform: item.platform,
-      assetName: item.assetName,
-      format: item.format ?? "raw",
-    })),
-  });
-});
-
-function realRelease(): Release {
-  const rows: Array<[string, number, string]> = [
+  const names = [
     [
       "gh_2.102.0_checksums.txt",
       1971,
@@ -55,15 +42,24 @@ function realRelease(): Release {
       13907525,
       "sha256:5dcf12aa8525eabd0c46ec414f323ab6cf65229fc2cd46543cc705001bbaf223",
     ],
-  ];
-  return {
+  ] as const;
+  const selected = selectRelease("cli", "cli", {
     tag_name: "v2.102.0",
-    assets: rows.map(([name, size, digest]) => ({
+    assets: names.map(([name, size, digest]) => ({
       name,
       size,
       digest,
       browser_download_url:
         `https://github.com/cli/cli/releases/download/v2.102.0/${name}`,
     })),
-  };
-}
+  });
+  await t.assertSnapshot({
+    version: selected.version,
+    command: selected.command,
+    platforms: selected.platforms.map(({ platform, assetName, format }) => ({
+      platform,
+      assetName,
+      format: format ?? "raw",
+    })),
+  });
+});

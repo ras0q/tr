@@ -97,7 +97,8 @@ export function selectRelease(
     if (!Number.isSafeInteger(asset.size) || asset.size <= 0) {
       throw new ResolveError(`unexpected size for ${asset.name}`);
     }
-    const url = assetUrl(owner, repo, release.tag_name, asset.name);
+    const url =
+      `https://github.com/${owner}/${repo}/releases/download/${release.tag_name}/${asset.name}`;
     if (asset.browser_download_url.toLowerCase() !== url.toLowerCase()) {
       throw new ResolveError(`unexpected url for ${asset.name}`);
     }
@@ -150,15 +151,6 @@ function versionFromTag(tag: string): string {
   const version = tag.startsWith("v") ? tag.slice(1) : tag;
   if (!SEMVER.test(version)) throw new ResolveError(`unsupported tag ${tag}`);
   return version;
-}
-
-function assetUrl(
-  owner: string,
-  repo: string,
-  tag: string,
-  name: string,
-): string {
-  return `https://github.com/${owner}/${repo}/releases/download/${tag}/${name}`;
 }
 
 function listable(format: string): "tar.gz" | "zip" | "raw" | undefined {

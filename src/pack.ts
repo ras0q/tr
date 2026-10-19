@@ -5,9 +5,9 @@ import { pack as createTarPack } from "tar-stream";
 import { type SelectedPlatform, type SelectedRelease } from "./resolve.ts";
 
 /** Pinned so a given release always produces the same tarball bytes. */
-export const FB_DOTSLASH_VERSION = "0.5.8";
+const FB_DOTSLASH_VERSION = "0.5.8";
 
-type PackedRelease = SelectedRelease & {
+export type PackedRelease = SelectedRelease & {
   platforms: Array<SelectedPlatform & { path: string }>;
 };
 
@@ -18,7 +18,7 @@ export type Packed = {
   integrity: string;
 };
 
-export function renderDotslash(resolved: PackedRelease): string {
+function renderDotslash(resolved: PackedRelease): string {
   const platforms: Record<string, unknown> = {};
   const ordered = [...resolved.platforms].sort((a, b) =>
     a.platform.localeCompare(b.platform)
@@ -37,7 +37,7 @@ export function renderDotslash(resolved: PackedRelease): string {
   return `#!/usr/bin/env dotslash\n${body}\n`;
 }
 
-export function renderPackageJson(resolved: PackedRelease): string {
+function renderPackageJson(resolved: PackedRelease): string {
   const launcher = `bin/${resolved.command}.mjs`;
   return JSON.stringify(
     {
@@ -52,7 +52,7 @@ export function renderPackageJson(resolved: PackedRelease): string {
   ) + "\n";
 }
 
-export function renderLauncher(command: string): string {
+function renderLauncher(command: string): string {
   return `#!/usr/bin/env node
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -139,19 +139,15 @@ async function tarFiles(files: Array<[string, string]>): Promise<Buffer> {
     archive.on("error", reject);
   });
 
-  const write = async () => {
-    for (const [name, text] of files) {
-      await new Promise<void>((resolve, reject) => {
-        archive.entry(
-          { name, mode: 0o644, mtime: new Date(0), uid: 0, gid: 0 },
-          Buffer.from(text),
-          (error) => error ? reject(error) : resolve(),
-        );
-      });
-    }
-    archive.finalize();
-  };
-
-  await write();
+  for (const [name, text] of files) {
+    await new Promise<void>((resolve, reject) => {
+      archive.entry(
+        { name, mode: 0o644, mtime: new Date(0), uid: 0, gid: 0 },
+        Buffer.from(text),
+        (error) => error ? reject(error) : resolve(),
+      );
+    });
+  }
+  archive.finalize();
   return await done;
 }
