@@ -1,9 +1,16 @@
-import { createBuilder } from "./core/build.ts";
-import { listArchive } from "./adapter/archive.ts";
-import { fetchAsset, fetchLatestRelease } from "./adapter/github.ts";
+import { readExecutablePath } from "./adapter/archive.ts";
 import { createApp } from "./adapter/registry.ts";
+import { fetchLatestRelease } from "./adapter/github.ts";
+import { createSqlite } from "./adapter/sqlite.ts";
+import { createManifestStore } from "./adapter/store.ts";
+import { createBuilder } from "./core/build.ts";
 
-const manifestFor = createBuilder(fetchLatestRelease, fetchAsset, listArchive);
+const store = await createManifestStore(createSqlite("tr.sqlite"));
+const manifestFor = createBuilder(
+  fetchLatestRelease,
+  readExecutablePath,
+  store,
+);
 const app = createApp(manifestFor);
 
 // `deno serve` owns the socket and requires a default export with `fetch`.

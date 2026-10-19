@@ -8,6 +8,8 @@ Deno.test("npm install @tr/cli--cli in a package directory", async () => {
     args: [
       "serve",
       "--allow-net",
+      "--allow-read",
+      "--allow-write",
       "--host=127.0.0.1",
       "--port=0",
       "src/main.ts",

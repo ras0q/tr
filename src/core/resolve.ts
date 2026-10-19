@@ -112,6 +112,63 @@ export function parseTarballName(
   return { id, version: version as Semver };
 }
 
+export function manifestFrom(input: {
+  packageName: string;
+  version: string;
+  command: string;
+  platforms: readonly {
+    platform: string;
+    os: "linux" | "darwin" | "windows";
+    size: number;
+    digest: string;
+    archive: "raw" | "tar.gz" | "zip";
+    url: string;
+    assetName: string;
+    path: string;
+  }[];
+}): PackageManifest {
+  if (parsePackageName(input.packageName) === undefined) {
+    throw new ResolveError("stored manifest did not match the expected shape");
+  }
+  if (!SEMVER.test(input.version)) {
+    throw new ResolveError(`unsupported version ${input.version}`);
+  }
+  if (!/^[A-Za-z0-9._+-]+$/.test(input.command)) {
+    throw new ResolveError(`unsupported command name ${input.command}`);
+  }
+  if (input.platforms.length === 0) {
+    throw new ResolveError("stored manifest did not match the expected shape");
+  }
+  return {
+    packageName: input.packageName,
+    version: input.version,
+    command: input.command,
+    platforms: input.platforms.map((item) => {
+      if (!/^[a-f0-9]{64}$/.test(item.digest)) {
+        throw new ResolveError(`unexpected digest for ${item.assetName}`);
+      }
+      if (!Number.isSafeInteger(item.size) || item.size <= 0) {
+        throw new ResolveError(`unexpected size for ${item.assetName}`);
+      }
+      const path = item.path.replaceAll("\\", "/").replace(/^\.\//, "");
+      if (path === "" || path.split("/").includes("..")) {
+        throw new ResolveError(`unexpected path for ${item.assetName}`);
+      }
+      const base = {
+        platform: item.platform,
+        os: item.os,
+        size: item.size as ByteSize,
+        digest: item.digest as Sha256,
+        url: item.url,
+        assetName: item.assetName,
+        path,
+      };
+      if (item.archive === "raw") return { ...base, archive: "raw" as const };
+      return { ...base, archive: item.archive };
+    }),
+  };
+}
+
 export function releaseFrom(input: {
   tag: string;
   assets: readonly {

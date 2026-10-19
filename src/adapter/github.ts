@@ -77,22 +77,3 @@ export async function fetchLatestRelease(
 
   return parseGitHubRelease(owner, repo, body);
 }
-
-export async function fetchAsset(
-  url: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<Uint8Array> {
-  try {
-    const response = await fetchImpl(url, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(600_000),
-    });
-    if (!response.ok) {
-      throw new ResolveError(`asset download failed: ${response.status}`);
-    }
-    return new Uint8Array(await response.arrayBuffer());
-  } catch (error) {
-    if (error instanceof ResolveError) throw error;
-    throw new ResolveError(`asset download failed: ${url}`);
-  }
-}

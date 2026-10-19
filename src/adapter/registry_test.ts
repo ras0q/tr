@@ -3,8 +3,14 @@ import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync, zipSync } from "fflate";
 import { extract, pack as createTarPack } from "tar-stream";
 import { createBuilder } from "../core/build.ts";
-import { releaseFrom } from "../core/resolve.ts";
-import { listArchive } from "./archive.ts";
+import { chooseExecutable, releaseFrom } from "../core/resolve.ts";
+import {
+  executableInTarGz,
+  locateZipDirectory,
+  zipMemberNames,
+} from "./archive.ts";
+import { createSqlite } from "./sqlite.ts";
+import { createManifestStore } from "./store.ts";
 import { createApp } from "./registry.ts";
 
 const encode = new TextEncoder();
@@ -14,22 +20,24 @@ const fixtureBytes = new Map<string, Uint8Array>();
 Deno.test("registry responses", async (t) => {
   const body = await ghBody();
   let tamper = false;
-  const app = createApp(createBuilder(() => {
-    const release = structuredClone(body);
-    if (tamper) release.assets[0].size = 99;
-    return Promise.resolve(releaseFrom({
-      tag: release.tag_name,
-      assets: release.assets.map((asset) => ({
-        name: asset.name,
-        size: asset.size,
-        digest: asset.digest.slice("sha256:".length),
-        url: asset.browser_download_url,
-      })),
-    }));
-  }, (url) => {
-    const bytes = fixtureBytes.get(url);
-    return bytes ? Promise.resolve(bytes) : Promise.reject(new Error(url));
-  }, listArchive));
+  const store = await createManifestStore(createSqlite(":memory:"));
+  const app = createApp(createBuilder(
+    () => {
+      const release = structuredClone(body);
+      if (tamper) release.assets[0].size = 99;
+      return Promise.resolve(releaseFrom({
+        tag: release.tag_name,
+        assets: release.assets.map((asset) => ({
+          name: asset.name,
+          size: asset.size,
+          digest: asset.digest.slice("sha256:".length),
+          url: asset.browser_download_url,
+        })),
+      }));
+    },
+    readFixturePath,
+    store,
+  ));
 
   const meta = await app.request(`${origin}/@tr%2fcli--cli`);
   const packument = await meta.json();
@@ -46,7 +54,7 @@ Deno.test("registry responses", async (t) => {
   const brokenApp = createApp(createBuilder(
     () => Promise.resolve(releaseFrom({ tag: "nope", assets: [] })),
     () => Promise.reject(new Error("unread")),
-    listArchive,
+    await createManifestStore(createSqlite(":memory:")),
   ));
   const broken = await brokenApp.request(`${origin}/@tr%2fcli--cli`);
 
@@ -59,6 +67,35 @@ Deno.test("registry responses", async (t) => {
     broken: { status: broken.status, body: await broken.text() },
   });
 });
+
+async function readFixturePath(
+  asset: { url: string; archive: "tar.gz" | "zip"; os: string },
+  command: string,
+): Promise<string> {
+  const bytes = fixtureBytes.get(asset.url);
+  if (!bytes) throw new Error(asset.url);
+  if (asset.archive === "zip") {
+    const directory = locateZipDirectory(bytes);
+    return chooseExecutable(
+      zipMemberNames(bytes.subarray(
+        directory.offset,
+        directory.offset + directory.length,
+      )),
+      command,
+      asset.os,
+    );
+  }
+  return await executableInTarGz(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    }),
+    command,
+    asset.os,
+  );
+}
 
 async function ghBody() {
   const specs = [

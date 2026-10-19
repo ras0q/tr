@@ -1,9 +1,12 @@
 export const snapshot = {};
 
-snapshot[`chooseExecutable reads gh's two archive layouts 1`] = `
+snapshot[`member names come from the directory, not the file body 1`] = `
 {
   goreleaser: "foo_1.0.0_linux_amd64/foo",
   linux: "gh_2.102.0_linux_amd64/bin/gh",
+  linuxStoppedEarly: true,
   windows: "bin/gh.exe",
+  windowsNames: "bin/gh.exe",
+  windowsStartedAtTail: true,
 }
 `;

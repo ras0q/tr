@@ -1,0 +1,9 @@
+export const snapshot = {};
+
+snapshot[`the first manifest for a version is the one that stays 1`] = `
+{
+  loaded: "gh_2.102.0_linux_amd64/bin/gh",
+  raced: "gh_2.102.0_linux_amd64/bin/gh",
+  saved: "gh_2.102.0_linux_amd64/bin/gh",
+}
+`;
