@@ -1,0 +1,155 @@
+export const snapshot = {};
+
+snapshot[`registry responses 1`] = `
+{
+  broken: {
+    body: "unsupported tag nope",
+    status: 502,
+  },
+  files: {
+    "package/bin/gh.mjs": '#!/usr/bin/env node
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import dotslash from "fb-dotslash";
+
+const manifest = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "manifests",
+  "gh.dotslash",
+);
+const child = spawn(dotslash, [manifest, ...process.argv.slice(2)], {
+  stdio: "inherit",
+});
+child.on("error", () => {
+  process.exit(1);
+});
+child.on("exit", (code, signal) => {
+  if (signal) {
+    process.kill(process.pid, signal);
+    return;
+  }
+  process.exit(code === null ? 1 : code);
+});
+',
+    "package/manifests/gh.dotslash": '#!/usr/bin/env dotslash
+{
+  "name": "gh",
+  "platforms": {
+    "linux-aarch64": {
+      "size": 10,
+      "hash": "sha256",
+      "digest": "abababababababababababababababababababababababababababababababab",
+      "format": "tar.gz",
+      "path": "gh_2.102.0_linux_arm64/bin/gh",
+      "providers": [
+        {
+          "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_arm64.tar.gz"
+        }
+      ]
+    },
+    "linux-x86_64": {
+      "size": 10,
+      "hash": "sha256",
+      "digest": "abababababababababababababababababababababababababababababababab",
+      "format": "tar.gz",
+      "path": "gh_2.102.0_linux_amd64/bin/gh",
+      "providers": [
+        {
+          "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_amd64.tar.gz"
+        }
+      ]
+    },
+    "macos-aarch64": {
+      "size": 10,
+      "hash": "sha256",
+      "digest": "abababababababababababababababababababababababababababababababab",
+      "format": "zip",
+      "path": "gh_2.102.0_macOS_arm64/bin/gh",
+      "providers": [
+        {
+          "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_macOS_arm64.zip"
+        }
+      ]
+    },
+    "macos-x86_64": {
+      "size": 10,
+      "hash": "sha256",
+      "digest": "abababababababababababababababababababababababababababababababab",
+      "format": "zip",
+      "path": "gh_2.102.0_macOS_amd64/bin/gh",
+      "providers": [
+        {
+          "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_macOS_amd64.zip"
+        }
+      ]
+    },
+    "windows-aarch64": {
+      "size": 10,
+      "hash": "sha256",
+      "digest": "abababababababababababababababababababababababababababababababab",
+      "format": "zip",
+      "path": "bin/gh.exe",
+      "providers": [
+        {
+          "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_windows_arm64.zip"
+        }
+      ]
+    },
+    "windows-x86_64": {
+      "size": 10,
+      "hash": "sha256",
+      "digest": "abababababababababababababababababababababababababababababababab",
+      "format": "zip",
+      "path": "bin/gh.exe",
+      "providers": [
+        {
+          "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_windows_amd64.zip"
+        }
+      ]
+    }
+  }
+}
+',
+    "package/package.json": '{
+  "name": "@tr/cli--cli",
+  "version": "2.102.0",
+  "type": "module",
+  "bin": {
+    "gh": "bin/gh.mjs"
+  },
+  "dependencies": {
+    "fb-dotslash": "0.5.8"
+  }
+}
+',
+  },
+  missingStatus: 404,
+  packument: {
+    "dist-tags": {
+      latest: "2.102.0",
+    },
+    name: "@tr/cli--cli",
+    versions: {
+      "2.102.0": {
+        bin: {
+          gh: "bin/gh.mjs",
+        },
+        dependencies: {
+          "fb-dotslash": "0.5.8",
+        },
+        dist: {
+          integrity: "sha512-7ZJQcrbTsQprz8UpgqyvVkNsGLDeVBnEjiUi/RwSvMORlrfxfcr9lA6lpM0tnaF+orbJnNpz4uM+StorN+e9Sg==",
+          shasum: "b05d0d906c8704981c89f796f810d3b5379cbc32",
+          tarball: "http://127.0.0.1:8787/@tr/cli--cli/-/cli--cli-2.102.0.tgz",
+        },
+        name: "@tr/cli--cli",
+        version: "2.102.0",
+      },
+    },
+  },
+  repeatIntegrity: "sha512-7ZJQcrbTsQprz8UpgqyvVkNsGLDeVBnEjiUi/RwSvMORlrfxfcr9lA6lpM0tnaF+orbJnNpz4uM+StorN+e9Sg==",
+  tarballStatus: 200,
+}
+`;

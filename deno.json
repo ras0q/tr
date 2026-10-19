@@ -1,0 +1,14 @@
+{
+  "tasks": {
+    "start": "deno serve --allow-net --host=127.0.0.1 --port=8787 src/main.ts",
+    "test": "deno test --ignore=e2e",
+    "e2e": "deno test --allow-net --allow-run --allow-read --allow-write --allow-env e2e/",
+    "check": "deno fmt --check && deno lint && deno test --ignore=e2e"
+  },
+  "imports": {
+    "fflate": "npm:fflate@0.8.3",
+    "hono": "npm:hono@4.13.13",
+    "tar-stream": "npm:tar-stream@3.2.2",
+    "valibot": "npm:valibot@1.5.0"
+  }
+}

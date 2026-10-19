@@ -1,0 +1,20 @@
+export const snapshot = {};
+
+snapshot[`GitHub release schema 1`] = `
+{
+  httpStatus: "GitHub release request failed: 500",
+  invalidJson: "GitHub release request failed",
+  parsed: {
+    assets: [
+      {
+        browser_download_url: "https://example.com/gh.tar.gz",
+        digest: "sha256:abababababababababababababababababababababababababababababababab",
+        name: "gh_2.102.0_linux_amd64.tar.gz",
+        size: 10,
+      },
+    ],
+    tag_name: "v2.102.0",
+  },
+  shape: "GitHub release did not match the expected shape",
+}
+`;
