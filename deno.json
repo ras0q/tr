@@ -1,9 +1,21 @@
 {
   "tasks": {
-    "start": "deno serve --allow-net --host=127.0.0.1 --port=8787 src/main.ts",
-    "test": "deno test --ignore=e2e",
-    "e2e": "deno test --allow-net --allow-run --allow-read --allow-write --allow-env e2e/",
-    "check": "deno fmt --check && deno lint && deno test --ignore=e2e"
+    "start": {
+      "command": "deno serve --allow-net --host=127.0.0.1 --port=8787 src/main.ts",
+      "description": "Serve the registry on 127.0.0.1:8787"
+    },
+    "test": {
+      "command": "deno test --ignore=e2e",
+      "description": "Run unit tests"
+    },
+    "e2e": {
+      "command": "deno test --allow-net --allow-run --allow-read --allow-write --allow-env e2e/",
+      "description": "npm install @tr/cli--cli against a temporary registry"
+    },
+    "check": {
+      "command": "deno fmt --check && deno lint && deno test --ignore=e2e",
+      "description": "Format, lint, and run unit tests"
+    }
   },
   "imports": {
     "fflate": "npm:fflate@0.8.3",
