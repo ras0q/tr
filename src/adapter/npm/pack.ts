@@ -87,23 +87,31 @@ export function packument(
   packed: PackedNpmPackage,
   origin: string,
 ) {
-  const unscoped = resolved.packageName.split("/")[1];
   return {
     name: resolved.packageName,
     "dist-tags": { latest: packed.version },
     versions: {
-      [packed.version]: {
-        name: resolved.packageName,
-        version: packed.version,
-        bin: { [resolved.command]: `bin/${resolved.command}.mjs` },
-        dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
-        dist: {
-          tarball:
-            `${origin}/${resolved.packageName}/-/${unscoped}-${packed.version}.tgz`,
-          shasum: packed.shasum,
-          integrity: packed.integrity,
-        },
-      },
+      [packed.version]: versionMetadata(resolved, packed, origin),
+    },
+  };
+}
+
+export function versionMetadata(
+  resolved: NpmPackage,
+  packed: PackedNpmPackage,
+  origin: string,
+) {
+  const unscoped = resolved.packageName.split("/")[1];
+  return {
+    name: resolved.packageName,
+    version: packed.version,
+    bin: { [resolved.command]: `bin/${resolved.command}.mjs` },
+    dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
+    dist: {
+      tarball:
+        `${origin}/${resolved.packageName}/-/${unscoped}-${packed.version}.tgz`,
+      shasum: packed.shasum,
+      integrity: packed.integrity,
     },
   };
 }

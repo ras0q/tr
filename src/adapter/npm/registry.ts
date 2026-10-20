@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { packNpmPackage, packument } from "./pack.ts";
+import { packNpmPackage, packument, versionMetadata } from "./pack.ts";
 import {
   createNpmPackage,
   type NpmScope,
@@ -53,6 +53,16 @@ export function createNpmRegistry(
     return c.body(packed.tarball, 200, {
       "content-type": "application/octet-stream",
     });
+  });
+
+  app.get(`/${scope}/:name/:version`, async (c) => {
+    const id = parsePackageName(c.req.param("name"));
+    if (!id) return c.notFound();
+    const pkg = createNpmPackage(scope, id, await manifestFor(id));
+    const version = c.req.param("version");
+    if (version !== "latest" && version !== pkg.version) return c.notFound();
+    const packed = await packNpmPackage(pkg);
+    return c.json(versionMetadata(pkg, packed, new URL(c.req.url).origin));
   });
 
   app.get(`/${scope}/:name`, async (c) => {
