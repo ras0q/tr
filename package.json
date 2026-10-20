@@ -1,0 +1,10 @@
+{
+  "name": "tr",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.2",
+    "@cloudflare/workers-types": "5.20261019.1",
+    "vite": "8.3.4"
+  }
+}

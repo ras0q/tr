@@ -1,4 +1,5 @@
 .deno/
+.cloudflare/
 tr.objects/
 *.sqlite
 *.sqlite-journal

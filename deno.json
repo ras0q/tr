@@ -1,4 +1,5 @@
 {
+  "nodeModulesDir": "auto",
   "tasks": {
     "start": {
       "command": "deno serve --allow-net --allow-read --allow-write --host=127.0.0.1 --port=8787 src/main.ts",
@@ -13,14 +14,24 @@
       "description": "npm install @tr/cli--cli against a temporary registry"
     },
     "check": {
-      "command": "deno fmt --check && deno lint && deno test --ignore=e2e",
+      "command": "deno fmt --check && deno lint && deno check src/main.ts && deno check src/worker.ts cloudflare.config.ts vite.config.ts && deno test --ignore=e2e",
       "description": "Format, lint, and run unit tests"
+    },
+    "cf": {
+      "command": "cf",
+      "description": "Run the pinned Cloudflare CLI"
     }
   },
   "imports": {
+    "cf": "npm:cf@0.15.0",
     "fflate": "npm:fflate@0.8.3",
     "hono": "npm:hono@4.13.13",
     "tar-stream": "npm:tar-stream@3.2.2",
     "valibot": "npm:valibot@1.5.0"
-  }
+  },
+  "allowScripts": [
+    "npm:workerd@1.20260921.1",
+    "npm:workerd@1.20260923.1",
+    "npm:workerd@1.20261019.1"
+  ]
 }

@@ -36,6 +36,11 @@ export function createNpmRegistry(
   app.onError((err, c) => {
     if (err instanceof HTTPException) return err.getResponse();
     if (err instanceof NotFoundError) return c.text("404 Not Found", 404);
+    console.error({
+      event: "registry_error",
+      name: err.name,
+      message: err.message,
+    });
     if (err instanceof ResolveError) return c.text(err.message, 502);
     return c.text("failed to build package", 502);
   });

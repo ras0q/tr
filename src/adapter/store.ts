@@ -12,6 +12,7 @@ import {
  * `first` returns `undefined` when the query has no row.
  */
 export type Sql = {
+  /** Executes one statement; schema statements may span multiple lines. */
   exec(sql: string): Promise<void>;
   first(
     sql: string,
