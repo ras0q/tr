@@ -34,26 +34,29 @@ export function createNpmRegistry(
 
   app.get("/", (c) => {
     const origin = new URL(c.req.url).origin;
-    const markdown = [
-      "# tr (Tool Registry)",
-      "",
-      "Install command line tools from GitHub Releases as npm packages.",
-      "",
-      "Configure this registry in your `.npmrc`:",
-      "",
-      "```ini",
-      `${scope}:registry=${origin}`,
-      "```",
-      "",
-      `Packages use the name \`${scope}/<owner>--<repo>\`. For example, \`${scope}/cli--cli\` provides GitHub CLI (\`gh\`).`,
-      "",
-      "For more detail, see <https://github.com/ras0q/tr",
-      "",
-    ].join("\n");
+    const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>tr npm registry</title>
+  </head>
+  <body>
+    <main>
+      <h1>tr npm registry</h1>
+      <p>Install command line tools from GitHub Releases as npm packages.</p>
+      <p>Configure this registry in your <code>.npmrc</code>:</p>
+      <pre><code>${scope}:registry=${origin}</code></pre>
+      <p>Packages use the name <code>${scope}/&lt;owner&gt;--&lt;repo&gt;</code>. For example, <code>${scope}/cli--cli</code> provides GitHub CLI (<code>gh</code>).</p>
+      <p><a href="https://github.com/ras0q/tr">Learn more about tr</a></p>
+    </main>
+  </body>
+</html>
+`;
     return c.body(
-      markdown,
+      html,
       200,
-      { "content-type": "text/markdown; charset=utf-8" },
+      { "content-type": "text/html; charset=utf-8" },
     );
   });
 
