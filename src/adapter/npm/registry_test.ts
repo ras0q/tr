@@ -12,6 +12,7 @@ import {
 import { createSqlite } from "../sqlite.ts";
 import { createManifestStore } from "../store.ts";
 import { createNpmRegistry } from "./registry.ts";
+import { npmScopeFrom } from "./package.ts";
 
 const encode = new TextEncoder();
 const origin = "http://127.0.0.1:8787";
@@ -22,6 +23,7 @@ Deno.test("registry responses", async (t) => {
   let tamper = false;
   const store = await createManifestStore(createSqlite(":memory:"));
   const app = createNpmRegistry(
+    npmScopeFrom("@tr"),
     createBuilder(
       () => {
         const release = structuredClone(body);
@@ -55,6 +57,7 @@ Deno.test("registry responses", async (t) => {
   const againBody = await again.json();
   const missing = await app.request(`${origin}/not-a-package`);
   const brokenApp = createNpmRegistry(
+    npmScopeFrom("@tr"),
     createBuilder(
       () =>
         Promise.resolve(

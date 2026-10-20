@@ -4,6 +4,11 @@ import {
   type ToolManifest,
 } from "../../core/resolve.ts";
 
+declare const npmScope: unique symbol;
+
+/** A validated namespace that is safe to embed in registry routes. */
+export type NpmScope = string & { readonly [npmScope]: never };
+
 export type NpmPackage = ToolManifest & {
   packageName: string;
   version: string;
@@ -12,6 +17,13 @@ export type NpmPackage = ToolManifest & {
 const PART = /^[a-z0-9_.-]+$/;
 const SEMVER =
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+export function npmScopeFrom(scope: string): NpmScope {
+  if (!/^@[a-z0-9][a-z0-9._-]*$/.test(scope)) {
+    throw new Error("npm scope must be a lowercase scope such as @tr");
+  }
+  return scope as NpmScope;
+}
 
 /** The first `--` separates the source owner from the repository name. */
 export function parsePackageName(
@@ -39,6 +51,7 @@ export function parseTarballName(
 }
 
 export function createNpmPackage(
+  scope: NpmScope,
   id: Repository,
   manifest: ToolManifest,
 ): NpmPackage {
@@ -50,7 +63,7 @@ export function createNpmPackage(
   }
   return {
     ...manifest,
-    packageName: `@tr/${id.owner}--${id.repo}`,
+    packageName: `${scope}/${id.owner}--${id.repo}`,
     version,
   };
 }

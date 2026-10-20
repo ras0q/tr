@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import { packNpmPackage, packument } from "./pack.ts";
 import {
   createNpmPackage,
+  type NpmScope,
   parsePackageName,
   parseTarballName,
 } from "./package.ts";
@@ -14,6 +15,7 @@ import {
 } from "../../core/resolve.ts";
 
 export function createNpmRegistry(
+  scope: NpmScope,
   manifestFor: (id: Repository) => Promise<ToolManifest>,
 ) {
   const app = new Hono({
@@ -35,13 +37,14 @@ export function createNpmRegistry(
     return c.text("failed to build package", 502);
   });
 
-  app.get("/@tr/:name/-/:file{.+\\.tgz}", async (c) => {
+  app.get(`/${scope}/:name/-/:file{.+\\.tgz}`, async (c) => {
     const requested = parseTarballName(
       c.req.param("name"),
       c.req.param("file"),
     );
     if (!requested) return c.notFound();
     const pkg = createNpmPackage(
+      scope,
       requested.id,
       await manifestFor(requested.id),
     );
@@ -52,10 +55,10 @@ export function createNpmRegistry(
     });
   });
 
-  app.get("/@tr/:name", async (c) => {
+  app.get(`/${scope}/:name`, async (c) => {
     const id = parsePackageName(c.req.param("name"));
     if (!id) return c.notFound();
-    const pkg = createNpmPackage(id, await manifestFor(id));
+    const pkg = createNpmPackage(scope, id, await manifestFor(id));
     const packed = await packNpmPackage(pkg);
     return c.json(packument(pkg, packed, new URL(c.req.url).origin));
   });
