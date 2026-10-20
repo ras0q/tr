@@ -9,6 +9,11 @@ Write documentation and comments in English. Write lines out to the width
 `deno task check` keeps. A function that only forwards to another function does
 not get its own name.
 
+Prefer preventing bugs through structural and type constraints over adding
+explicit tests. Validate external inputs at boundaries and make invalid states
+unrepresentable internally. Do not add tests by default; keep existing checks
+passing.
+
 Add a dependency when it parses or produces something this program would
 otherwise get wrong. A test-only library waits until the same boilerplate is the
 body of more than one test.
