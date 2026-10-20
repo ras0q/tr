@@ -5,8 +5,7 @@ import { pack as createTarPack } from "tar-stream";
 import { renderDotslash } from "../dotslash.ts";
 import { type NpmPackage } from "./package.ts";
 
-/** Pinned so a given release always produces the same tarball bytes. */
-const FB_DOTSLASH_VERSION = "0.5.8";
+const FB_DOTSLASH_RANGE = "^0.5.8";
 
 export type PackedNpmPackage = {
   version: string;
@@ -19,7 +18,8 @@ export type NpmVersionMetadata = {
   name: string;
   version: string;
   bin: Record<string, string>;
-  dependencies: Record<string, string>;
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
   dist: { tarball: string; shasum: string; integrity: string };
 };
 
@@ -29,7 +29,7 @@ function renderPackageJson(resolved: NpmPackage): string {
       name: resolved.packageName,
       version: resolved.version,
       bin: { [resolved.command]: `${resolved.command}.dotslash` },
-      dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
+      peerDependencies: { "fb-dotslash": FB_DOTSLASH_RANGE },
     },
     null,
     2,
@@ -77,7 +77,7 @@ export function versionMetadata(
     name: resolved.packageName,
     version: packed.version,
     bin: { [resolved.command]: `${resolved.command}.dotslash` },
-    dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
+    peerDependencies: { "fb-dotslash": FB_DOTSLASH_RANGE },
     dist: {
       tarball: `/${resolved.packageName}/-/${unscoped}-${packed.version}.tgz`,
       shasum: packed.shasum,

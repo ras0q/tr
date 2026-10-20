@@ -14,7 +14,8 @@ const Publication = v.object({
     name: v.string(),
     version: v.string(),
     bin: v.record(v.string(), v.string()),
-    dependencies: v.record(v.string(), v.string()),
+    dependencies: v.optional(v.record(v.string(), v.string())),
+    peerDependencies: v.optional(v.record(v.string(), v.string())),
     dist: v.object({
       tarball: v.string(),
       shasum: v.pipe(v.string(), v.regex(/^[a-f0-9]{40}$/)),
