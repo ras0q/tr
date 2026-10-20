@@ -44,37 +44,44 @@ export function parseGitHubRelease(
   });
 }
 
-export async function fetchLatestRelease(
-  owner: string,
-  repo: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<Release> {
-  const url = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
-  let response: Response;
-  try {
-    response = await fetchImpl(url, {
-      headers: {
-        accept: "application/vnd.github+json",
-        "user-agent": "tr",
-        "x-github-api-version": "2022-11-28",
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-  } catch {
-    throw new ResolveError("GitHub release request failed");
-  }
+/** Credentials apply only to GitHub API calls, never release asset downloads. */
+export function createGitHubSource({
+  token,
+  fetch: fetchImpl = fetch,
+}: { token?: string; fetch?: typeof fetch } = {}) {
+  const headers = new Headers({
+    accept: "application/vnd.github+json",
+    "user-agent": "tr",
+    "x-github-api-version": "2022-11-28",
+  });
+  if (token) headers.set("authorization", `Bearer ${token}`);
 
-  if (response.status === 404) throw new NotFoundError(`${owner}/${repo}`);
-  if (!response.ok) {
-    throw new ResolveError(`GitHub release request failed: ${response.status}`);
-  }
+  return async (owner: string, repo: string): Promise<Release> => {
+    const url = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+    let response: Response;
+    try {
+      response = await fetchImpl(url, {
+        headers,
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      throw new ResolveError("GitHub release request failed");
+    }
 
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    throw new ResolveError("GitHub release request failed");
-  }
+    if (response.status === 404) throw new NotFoundError(`${owner}/${repo}`);
+    if (!response.ok) {
+      throw new ResolveError(
+        `GitHub release request failed: ${response.status}`,
+      );
+    }
 
-  return parseGitHubRelease(owner, repo, body);
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      throw new ResolveError("GitHub release request failed");
+    }
+
+    return parseGitHubRelease(owner, repo, body);
+  };
 }

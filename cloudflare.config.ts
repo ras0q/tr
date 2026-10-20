@@ -9,9 +9,10 @@ export default defineConfig({
     workersDev: true,
     observability: { enabled: true },
     env: {
-      NPM_SCOPE: bindings.text("@tr"),
-      DB: bindings.d1({ name: "tr-staging" }),
-      ARTIFACTS: bindings.r2({ name: "tr-staging-artifacts" }),
+      TR_GITHUB_TOKEN: bindings.secret(),
+      TR_NPM_SCOPE: bindings.text("@tr"),
+      TR_DB: bindings.d1({ name: "tr-staging" }),
+      TR_ARTIFACTS: bindings.r2({ name: "tr-staging-artifacts" }),
     },
   },
 });

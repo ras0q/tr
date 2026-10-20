@@ -1,17 +1,17 @@
 import { readExecutablePath } from "./adapter/archive.ts";
 import { createNpmRegistry } from "./adapter/npm/registry.ts";
-import { fetchLatestRelease } from "./adapter/github.ts";
+import { createGitHubSource } from "./adapter/github.ts";
 import { createSqlite } from "./adapter/sqlite.ts";
 import { createManifestStore } from "./adapter/store.ts";
 import { createBuilder } from "./core/build.ts";
-import { argv } from "node:process";
+import { argv, env } from "node:process";
 import { parseOptions } from "./cli.ts";
 import { createFileObjectStore } from "./adapter/filesystem.ts";
 
 const options = parseOptions(argv.slice(2));
 const store = await createManifestStore(createSqlite("tr.sqlite"));
 const manifestFor = createBuilder(
-  fetchLatestRelease,
+  createGitHubSource({ token: env.TR_GITHUB_TOKEN }),
   readExecutablePath,
   store,
 );

@@ -2,7 +2,7 @@
   "nodeModulesDir": "auto",
   "tasks": {
     "start": {
-      "command": "deno serve --allow-net --allow-read --allow-write --host=127.0.0.1 --port=8787 src/main.ts",
+      "command": "deno serve --allow-env=TR_GITHUB_TOKEN --allow-net --allow-read --allow-write --host=127.0.0.1 --port=8787 src/main.ts",
       "description": "Serve the registry on 127.0.0.1:8787"
     },
     "test": {

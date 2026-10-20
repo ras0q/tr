@@ -8,6 +8,7 @@ Deno.test("npm install @tr/cli--cli in a package directory", async () => {
     args: [
       "serve",
       "--allow-net",
+      "--allow-env=TR_GITHUB_TOKEN",
       "--allow-read",
       "--allow-write",
       "--host=127.0.0.1",

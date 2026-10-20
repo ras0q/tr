@@ -1,4 +1,4 @@
-import { fetchLatestRelease } from "./github.ts";
+import { createGitHubSource } from "./github.ts";
 
 Deno.test("GitHub release schema", async (t) => {
   const release = {
@@ -15,7 +15,10 @@ Deno.test("GitHub release schema", async (t) => {
   };
   const message = async (response: Response) => {
     try {
-      await fetchLatestRelease("cli", "cli", () => Promise.resolve(response));
+      await createGitHubSource({ fetch: () => Promise.resolve(response) })(
+        "cli",
+        "cli",
+      );
       return "did not throw";
     } catch (error) {
       return error instanceof Error ? error.message : "unknown error";
@@ -23,11 +26,9 @@ Deno.test("GitHub release schema", async (t) => {
   };
 
   await t.assertSnapshot({
-    parsed: await fetchLatestRelease(
-      "cli",
-      "cli",
-      () => Promise.resolve(Response.json(release)),
-    ),
+    parsed: await createGitHubSource({
+      fetch: () => Promise.resolve(Response.json(release)),
+    })("cli", "cli"),
     httpStatus: await message(
       Response.json({ tag_name: "v1.0.0", assets: [] }, { status: 500 }),
     ),

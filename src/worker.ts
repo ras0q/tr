@@ -1,7 +1,7 @@
 import { type D1Database, type R2Bucket } from "@cloudflare/workers-types";
 import { readExecutablePath } from "./adapter/archive.ts";
 import { createD1Sql } from "./adapter/d1.ts";
-import { fetchLatestRelease } from "./adapter/github.ts";
+import { createGitHubSource } from "./adapter/github.ts";
 import { npmScopeFrom } from "./adapter/npm/package.ts";
 import { createNpmRegistry } from "./adapter/npm/registry.ts";
 import { createR2ObjectStore } from "./adapter/r2.ts";
@@ -9,9 +9,10 @@ import { createManifestStore } from "./adapter/store.ts";
 import { createBuilder } from "./core/build.ts";
 
 type Bindings = {
-  DB: D1Database;
-  ARTIFACTS: R2Bucket;
-  NPM_SCOPE: string;
+  TR_DB: D1Database;
+  TR_ARTIFACTS: R2Bucket;
+  TR_NPM_SCOPE: string;
+  TR_GITHUB_TOKEN?: string;
 };
 
 let app: ReturnType<typeof createNpmRegistry> | undefined;
@@ -21,12 +22,16 @@ export default {
     try {
       if (!app) {
         // Binding I/O must run inside a request, never during module evaluation.
-        const scope = npmScopeFrom(env.NPM_SCOPE);
-        const store = await createManifestStore(createD1Sql(env.DB));
+        const scope = npmScopeFrom(env.TR_NPM_SCOPE);
+        const store = await createManifestStore(createD1Sql(env.TR_DB));
         app = createNpmRegistry(
           scope,
-          createBuilder(fetchLatestRelease, readExecutablePath, store),
-          createR2ObjectStore(env.ARTIFACTS),
+          createBuilder(
+            createGitHubSource({ token: env.TR_GITHUB_TOKEN }),
+            readExecutablePath,
+            store,
+          ),
+          createR2ObjectStore(env.TR_ARTIFACTS),
         );
       }
       return await app.fetch(request);
