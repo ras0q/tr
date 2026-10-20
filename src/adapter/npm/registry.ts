@@ -32,6 +32,31 @@ export function createNpmRegistry(
     },
   });
 
+  app.get("/", (c) => {
+    const origin = new URL(c.req.url).origin;
+    const markdown = [
+      "# tr (Tool Registry)",
+      "",
+      "Install command line tools from GitHub Releases as npm packages.",
+      "",
+      "Configure this registry in your `.npmrc`:",
+      "",
+      "```ini",
+      `${scope}:registry=${origin}`,
+      "```",
+      "",
+      `Packages use the name \`${scope}/<owner>--<repo>\`. For example, \`${scope}/cli--cli\` provides GitHub CLI (\`gh\`).`,
+      "",
+      "For more detail, see <https://github.com/ras0q/tr",
+      "",
+    ].join("\n");
+    return c.body(
+      markdown,
+      200,
+      { "content-type": "text/markdown; charset=utf-8" },
+    );
+  });
+
   app.notFound((c) => c.text("404 Not Found", 404));
   app.onError((err, c) => {
     if (err instanceof HTTPException) return err.getResponse();
