@@ -1,5 +1,5 @@
 import { readExecutablePath } from "./adapter/archive.ts";
-import { createApp } from "./adapter/registry.ts";
+import { createNpmRegistry } from "./adapter/npm/registry.ts";
 import { fetchLatestRelease } from "./adapter/github.ts";
 import { createSqlite } from "./adapter/sqlite.ts";
 import { createManifestStore } from "./adapter/store.ts";
@@ -11,7 +11,7 @@ const manifestFor = createBuilder(
   readExecutablePath,
   store,
 );
-const app = createApp(manifestFor);
+const app = createNpmRegistry(manifestFor);
 
 // `deno serve` owns the socket and requires a default export with `fetch`.
 // Hono's fetch is that handler, so this module stays free of Deno.serve.

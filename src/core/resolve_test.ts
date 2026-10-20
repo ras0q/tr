@@ -44,9 +44,9 @@ Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
     ],
   ] as const;
   const selected = selectRelease(
-    "cli",
-    "cli",
+    { owner: "cli", repo: "cli" },
     releaseFrom({
+      source: "https://github.com/cli/cli",
       tag: "v2.102.0",
       assets: names.map(([name, size, digest]) => ({
         name,
@@ -57,7 +57,8 @@ Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
     }),
   );
   await t.assertSnapshot({
-    version: selected.version,
+    source: selected.source,
+    tag: selected.tag,
     command: selected.command,
     platforms: selected.platforms.map(({ platform, assetName, archive }) => ({
       platform,

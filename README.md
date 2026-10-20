@@ -17,8 +17,8 @@ once to find the executable. `@tr/cli--cli` is `gh` from
 deno task start
 ```
 
-The registry listens on `127.0.0.1:8787`. The first request for a package
-version stores its manifest in `tr.sqlite`.
+The registry listens on `127.0.0.1:8787`. The first request for a source release
+stores its manifest in `tr.sqlite`.
 
 ## Install
 
@@ -35,5 +35,12 @@ npx gh --version
 
 `npm install` fetches metadata and the launcher. The `gh` binary is downloaded
 when you run the command.
+
+Core manifests contain source URLs, upstream tags, and executable information.
+They are independent of npm names and version rules, so future PyPI or cargo
+adapters can consume the same manifests.
+
+The scope-independent manifests use a new `tool_manifest` table. Existing
+`manifest` rows are left untouched and are not reused.
 
 Development setup is in [CONTRIBUTING.md](CONTRIBUTING.md).

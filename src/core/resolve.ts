@@ -1,19 +1,12 @@
 import { excludeAsset, getOSArch, parseAssetName } from "./parse_asset.ts";
 
-/**
- * `@tr/<owner>--<repo>` uses the first `--` as the separator.
- * GitHub owner and repo names are lowercased because npm package names are.
- */
-
-declare const semver: unique symbol;
 declare const sha256: unique symbol;
 declare const byteSize: unique symbol;
 
-export type Semver = string & { readonly [semver]: never };
 export type Sha256 = string & { readonly [sha256]: never };
 export type ByteSize = number & { readonly [byteSize]: never };
 
-export type PackageId = { owner: string; repo: string };
+export type Repository = { owner: string; repo: string };
 
 export type ReleaseAsset = {
   name: string;
@@ -23,8 +16,8 @@ export type ReleaseAsset = {
 };
 
 export type Release = {
+  source: string;
   tag: string;
-  version: Semver;
   assets: ReleaseAsset[];
 };
 
@@ -45,13 +38,13 @@ export type SelectedPlatform =
   );
 
 export type SelectedRelease = {
-  packageName: string;
-  version: string;
+  source: string;
+  tag: string;
   command: string;
   platforms: SelectedPlatform[];
 };
 
-export type PackageManifest = SelectedRelease & {
+export type ToolManifest = SelectedRelease & {
   platforms: Array<SelectedPlatform & { path: string }>;
 };
 
@@ -69,10 +62,6 @@ export class NotFoundError extends Error {
   }
 }
 
-const PART = /^[a-z0-9_.-]+$/;
-const SEMVER =
-  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-
 const TARGETS: ReadonlyArray<{
   os: "linux" | "darwin" | "windows";
   arch: string;
@@ -86,35 +75,9 @@ const TARGETS: ReadonlyArray<{
   { os: "windows", arch: "arm64", platform: "windows-aarch64" },
 ];
 
-export function parsePackageName(name: string): PackageId | undefined {
-  if (!name.startsWith("@tr/")) return undefined;
-  const body = name.slice("@tr/".length);
-  const sep = body.indexOf("--");
-  if (sep <= 0 || sep + 2 >= body.length) return undefined;
-  const owner = body.slice(0, sep);
-  const repo = body.slice(sep + 2);
-  if (!PART.test(owner) || !PART.test(repo)) return undefined;
-  return { owner, repo };
-}
-
-/** `cli--cli-2.102.0.tgz` → the package and the version the client asked for. */
-export function parseTarballName(
-  name: string,
-  file: string,
-): { id: PackageId; version: Semver } | undefined {
-  const id = parsePackageName(`@tr/${name}`);
-  if (!id) return undefined;
-  const unscoped = `${id.owner}--${id.repo}`;
-  const prefix = `${unscoped}-`;
-  if (!file.startsWith(prefix) || !file.endsWith(".tgz")) return undefined;
-  const version = file.slice(prefix.length, -".tgz".length);
-  if (!SEMVER.test(version)) return undefined;
-  return { id, version: version as Semver };
-}
-
 export function manifestFrom(input: {
-  packageName: string;
-  version: string;
+  source: string;
+  tag: string;
   command: string;
   platforms: readonly {
     platform: string;
@@ -126,13 +89,8 @@ export function manifestFrom(input: {
     assetName: string;
     path: string;
   }[];
-}): PackageManifest {
-  if (parsePackageName(input.packageName) === undefined) {
-    throw new ResolveError("stored manifest did not match the expected shape");
-  }
-  if (!SEMVER.test(input.version)) {
-    throw new ResolveError(`unsupported version ${input.version}`);
-  }
+}): ToolManifest {
+  validateSource(input.source, input.tag);
   if (!/^[A-Za-z0-9._+-]+$/.test(input.command)) {
     throw new ResolveError(`unsupported command name ${input.command}`);
   }
@@ -140,8 +98,8 @@ export function manifestFrom(input: {
     throw new ResolveError("stored manifest did not match the expected shape");
   }
   return {
-    packageName: input.packageName,
-    version: input.version,
+    source: input.source,
+    tag: input.tag,
     command: input.command,
     platforms: input.platforms.map((item) => {
       if (!/^[a-f0-9]{64}$/.test(item.digest)) {
@@ -170,6 +128,7 @@ export function manifestFrom(input: {
 }
 
 export function releaseFrom(input: {
+  source: string;
   tag: string;
   assets: readonly {
     name: string;
@@ -178,10 +137,10 @@ export function releaseFrom(input: {
     url: string;
   }[];
 }): Release {
-  const version = parseVersion(input.tag);
+  validateSource(input.source, input.tag);
   return {
+    source: input.source,
     tag: input.tag,
-    version,
     assets: input.assets.map((asset) => {
       if (!/^[a-f0-9]{64}$/.test(asset.digest)) {
         throw new ResolveError(`unexpected digest for ${asset.name}`);
@@ -200,8 +159,7 @@ export function releaseFrom(input: {
 }
 
 export function selectRelease(
-  owner: string,
-  repo: string,
+  { owner, repo }: Repository,
   release: Release,
 ): SelectedRelease {
   const parsed = release.assets.flatMap((asset) => {
@@ -242,17 +200,17 @@ export function selectRelease(
     throw new ResolveError(`assets disagree on the command name`);
   }
   return {
-    packageName: `@tr/${owner}--${repo}`,
-    version: release.version,
+    source: release.source,
+    tag: release.tag,
     command,
     platforms,
   };
 }
 
-function parseVersion(tag: string): Semver {
-  const version = tag.startsWith("v") ? tag.slice(1) : tag;
-  if (!SEMVER.test(version)) throw new ResolveError(`unsupported tag ${tag}`);
-  return version as Semver;
+function validateSource(source: string, tag: string): void {
+  if (!URL.canParse(source) || tag === "") {
+    throw new ResolveError("release must have a source URL and a tag");
+  }
 }
 
 function parseCommand(template: string, repo: string): string {

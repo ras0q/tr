@@ -35,6 +35,7 @@ snapshot[`selectRelease picks gh archives and skips packages 1`] = `
       platform: "windows-aarch64",
     },
   ],
-  version: "2.102.0",
+  source: "https://github.com/cli/cli",
+  tag: "v2.102.0",
 }
 `;

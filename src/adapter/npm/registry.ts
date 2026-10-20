@@ -1,17 +1,20 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { packResolved, packument } from "./pack.ts";
+import { packNpmPackage, packument } from "./pack.ts";
 import {
-  NotFoundError,
-  type PackageId,
-  type PackageManifest,
+  createNpmPackage,
   parsePackageName,
   parseTarballName,
+} from "./package.ts";
+import {
+  NotFoundError,
+  type Repository,
   ResolveError,
-} from "../core/resolve.ts";
+  type ToolManifest,
+} from "../../core/resolve.ts";
 
-export function createApp(
-  manifestFor: (id: PackageId) => Promise<PackageManifest>,
+export function createNpmRegistry(
+  manifestFor: (id: Repository) => Promise<ToolManifest>,
 ) {
   const app = new Hono({
     // npm encodes the scope slash (`/@tr%2fcli--cli`). Treat that as a path separator.
@@ -38,20 +41,23 @@ export function createApp(
       c.req.param("file"),
     );
     if (!requested) return c.notFound();
-    const manifest = await manifestFor(requested.id);
-    if (manifest.version !== requested.version) return c.notFound();
-    const packed = await packResolved(manifest);
+    const pkg = createNpmPackage(
+      requested.id,
+      await manifestFor(requested.id),
+    );
+    if (pkg.version !== requested.version) return c.notFound();
+    const packed = await packNpmPackage(pkg);
     return c.body(packed.tarball, 200, {
       "content-type": "application/octet-stream",
     });
   });
 
   app.get("/@tr/:name", async (c) => {
-    const id = parsePackageName(`@tr/${c.req.param("name")}`);
+    const id = parsePackageName(c.req.param("name"));
     if (!id) return c.notFound();
-    const manifest = await manifestFor(id);
-    const packed = await packResolved(manifest);
-    return c.json(packument(manifest, packed, new URL(c.req.url).origin));
+    const pkg = createNpmPackage(id, await manifestFor(id));
+    const packed = await packNpmPackage(pkg);
+    return c.json(packument(pkg, packed, new URL(c.req.url).origin));
   });
 
   return app;

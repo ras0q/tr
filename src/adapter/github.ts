@@ -27,6 +27,7 @@ export function parseGitHubRelease(
   }
   const { tag_name: tag, assets } = parsed.output;
   return releaseFrom({
+    source: `https://github.com/${owner}/${repo}`,
     tag,
     assets: assets.map((asset) => {
       const digest = /^sha256:([a-f0-9]{64})$/.exec(asset.digest);

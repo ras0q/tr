@@ -3,7 +3,7 @@ export const snapshot = {};
 snapshot[`registry responses 1`] = `
 {
   broken: {
-    body: "unsupported tag nope",
+    body: "no installable asset for cli/cli",
     status: 502,
   },
   files: {

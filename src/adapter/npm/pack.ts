@@ -2,38 +2,20 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { gzipSync } from "fflate";
 import { pack as createTarPack } from "tar-stream";
-import { type PackageManifest } from "../core/resolve.ts";
+import { renderDotslash } from "../dotslash.ts";
+import { type NpmPackage } from "./package.ts";
 
 /** Pinned so a given release always produces the same tarball bytes. */
 const FB_DOTSLASH_VERSION = "0.5.8";
 
-export type Packed = {
+export type PackedNpmPackage = {
   version: string;
   tarball: Uint8Array<ArrayBuffer>;
   shasum: string;
   integrity: string;
 };
 
-function renderDotslash(resolved: PackageManifest): string {
-  const platforms: Record<string, unknown> = {};
-  const ordered = [...resolved.platforms].sort((a, b) =>
-    a.platform.localeCompare(b.platform)
-  );
-  for (const item of ordered) {
-    platforms[item.platform] = {
-      size: item.size,
-      hash: "sha256",
-      digest: item.digest,
-      ...(item.archive === "raw" ? {} : { format: item.archive }),
-      path: item.path,
-      providers: [{ url: item.url }],
-    };
-  }
-  const body = JSON.stringify({ name: resolved.command, platforms }, null, 2);
-  return `#!/usr/bin/env dotslash\n${body}\n`;
-}
-
-function renderPackageJson(resolved: PackageManifest): string {
+function renderPackageJson(resolved: NpmPackage): string {
   const launcher = `bin/${resolved.command}.mjs`;
   return JSON.stringify(
     {
@@ -77,7 +59,9 @@ child.on("exit", (code, signal) => {
 `;
 }
 
-export async function packResolved(resolved: PackageManifest): Promise<Packed> {
+export async function packNpmPackage(
+  resolved: NpmPackage,
+): Promise<PackedNpmPackage> {
   const tar = await tarFiles([
     ["package/package.json", renderPackageJson(resolved)],
     [`package/bin/${resolved.command}.mjs`, renderLauncher(resolved.command)],
@@ -99,11 +83,11 @@ export async function packResolved(resolved: PackageManifest): Promise<Packed> {
 }
 
 export function packument(
-  resolved: PackageManifest,
-  packed: Packed,
+  resolved: NpmPackage,
+  packed: PackedNpmPackage,
   origin: string,
 ) {
-  const unscoped = resolved.packageName.slice("@tr/".length);
+  const unscoped = resolved.packageName.split("/")[1];
   return {
     name: resolved.packageName,
     "dist-tags": { latest: packed.version },

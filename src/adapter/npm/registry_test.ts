@@ -2,16 +2,16 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync, zipSync } from "fflate";
 import { extract, pack as createTarPack } from "tar-stream";
-import { createBuilder } from "../core/build.ts";
-import { chooseExecutable, releaseFrom } from "../core/resolve.ts";
+import { createBuilder } from "../../core/build.ts";
+import { chooseExecutable, releaseFrom } from "../../core/resolve.ts";
 import {
   executableInTarGz,
   locateZipDirectory,
   zipMemberNames,
-} from "./archive.ts";
-import { createSqlite } from "./sqlite.ts";
-import { createManifestStore } from "./store.ts";
-import { createApp } from "./registry.ts";
+} from "../archive.ts";
+import { createSqlite } from "../sqlite.ts";
+import { createManifestStore } from "../store.ts";
+import { createNpmRegistry } from "./registry.ts";
 
 const encode = new TextEncoder();
 const origin = "http://127.0.0.1:8787";
@@ -21,23 +21,26 @@ Deno.test("registry responses", async (t) => {
   const body = await ghBody();
   let tamper = false;
   const store = await createManifestStore(createSqlite(":memory:"));
-  const app = createApp(createBuilder(
-    () => {
-      const release = structuredClone(body);
-      if (tamper) release.assets[0].size = 99;
-      return Promise.resolve(releaseFrom({
-        tag: release.tag_name,
-        assets: release.assets.map((asset) => ({
-          name: asset.name,
-          size: asset.size,
-          digest: asset.digest.slice("sha256:".length),
-          url: asset.browser_download_url,
-        })),
-      }));
-    },
-    readFixturePath,
-    store,
-  ));
+  const app = createNpmRegistry(
+    createBuilder(
+      () => {
+        const release = structuredClone(body);
+        if (tamper) release.assets[0].size = 99;
+        return Promise.resolve(releaseFrom({
+          source: "https://github.com/cli/cli",
+          tag: release.tag_name,
+          assets: release.assets.map((asset) => ({
+            name: asset.name,
+            size: asset.size,
+            digest: asset.digest.slice("sha256:".length),
+            url: asset.browser_download_url,
+          })),
+        }));
+      },
+      readFixturePath,
+      store,
+    ),
+  );
 
   const meta = await app.request(`${origin}/@tr%2fcli--cli`);
   const packument = await meta.json();
@@ -51,11 +54,20 @@ Deno.test("registry responses", async (t) => {
   const again = await app.request(`${origin}/@tr%2fcli--cli`);
   const againBody = await again.json();
   const missing = await app.request(`${origin}/not-a-package`);
-  const brokenApp = createApp(createBuilder(
-    () => Promise.resolve(releaseFrom({ tag: "nope", assets: [] })),
-    () => Promise.reject(new Error("unread")),
-    await createManifestStore(createSqlite(":memory:")),
-  ));
+  const brokenApp = createNpmRegistry(
+    createBuilder(
+      () =>
+        Promise.resolve(
+          releaseFrom({
+            source: "https://github.com/cli/cli",
+            tag: "v1.0.0",
+            assets: [],
+          }),
+        ),
+      () => Promise.reject(new Error("unread")),
+      await createManifestStore(createSqlite(":memory:")),
+    ),
+  );
   const broken = await brokenApp.request(`${origin}/@tr%2fcli--cli`);
 
   await t.assertSnapshot({

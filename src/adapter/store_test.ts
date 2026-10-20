@@ -7,7 +7,7 @@ Deno.test("the first manifest for a version is the one that stays", async (t) =>
   const first = manifest("gh_2.102.0_linux_amd64/bin/gh");
   const saved = await store.putIfAbsent(first);
   const raced = await store.putIfAbsent(manifest("wrong"));
-  const loaded = await store.get(first.packageName, first.version);
+  const loaded = await store.get(first.source, first.tag);
   await t.assertSnapshot({
     saved: saved.platforms[0].path,
     raced: raced.platforms[0].path,
@@ -17,8 +17,8 @@ Deno.test("the first manifest for a version is the one that stays", async (t) =>
 
 function manifest(path: string) {
   return manifestFrom({
-    packageName: "@tr/cli--cli",
-    version: "2.102.0",
+    source: "https://github.com/cli/cli",
+    tag: "v2.102.0",
     command: "gh",
     platforms: [{
       platform: "linux-x86_64",

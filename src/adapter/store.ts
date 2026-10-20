@@ -2,8 +2,8 @@ import * as v from "valibot";
 import { type ManifestStore } from "../core/build.ts";
 import {
   manifestFrom,
-  type PackageManifest,
   ResolveError,
+  type ToolManifest,
 } from "../core/resolve.ts";
 
 /**
@@ -21,16 +21,16 @@ export type Sql = {
 };
 
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS manifest (
-  package_name TEXT NOT NULL,
-  version TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS tool_manifest (
+  source TEXT NOT NULL,
+  tag TEXT NOT NULL,
   body TEXT NOT NULL,
-  PRIMARY KEY (package_name, version)
+  PRIMARY KEY (source, tag)
 )`;
 
 const Stored = v.object({
-  packageName: v.string(),
-  version: v.string(),
+  source: v.string(),
+  tag: v.string(),
   command: v.string(),
   platforms: v.array(v.object({
     platform: v.string(),
@@ -47,24 +47,24 @@ const Stored = v.object({
 export async function createManifestStore(sql: Sql): Promise<ManifestStore> {
   await sql.exec(SCHEMA);
   return {
-    async get(packageName, version) {
+    async get(source, tag) {
       const row = await sql.first(
-        "SELECT body FROM manifest WHERE package_name = ? AND version = ?",
-        [packageName, version],
+        "SELECT body FROM tool_manifest WHERE source = ? AND tag = ?",
+        [source, tag],
       );
       if (!row) return undefined;
       return parseStored(row.body);
     },
     async putIfAbsent(manifest) {
       await sql.run(
-        `INSERT INTO manifest (package_name, version, body)
+        `INSERT INTO tool_manifest (source, tag, body)
          VALUES (?, ?, ?)
-         ON CONFLICT (package_name, version) DO NOTHING`,
-        [manifest.packageName, manifest.version, JSON.stringify(manifest)],
+         ON CONFLICT (source, tag) DO NOTHING`,
+        [manifest.source, manifest.tag, JSON.stringify(manifest)],
       );
       const row = await sql.first(
-        "SELECT body FROM manifest WHERE package_name = ? AND version = ?",
-        [manifest.packageName, manifest.version],
+        "SELECT body FROM tool_manifest WHERE source = ? AND tag = ?",
+        [manifest.source, manifest.tag],
       );
       if (!row) {
         throw new ResolveError(
@@ -76,7 +76,7 @@ export async function createManifestStore(sql: Sql): Promise<ManifestStore> {
   };
 }
 
-function parseStored(body: unknown): PackageManifest {
+function parseStored(body: unknown): ToolManifest {
   let json: unknown;
   try {
     json = JSON.parse(String(body));

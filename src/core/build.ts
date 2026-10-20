@@ -1,19 +1,19 @@
 import {
-  type PackageId,
-  type PackageManifest,
   type Release,
+  type Repository,
   selectRelease,
+  type ToolManifest,
 } from "./resolve.ts";
 
 export type ReleaseSource = (owner: string, repo: string) => Promise<Release>;
 
 export type ManifestStore = {
   get(
-    packageName: string,
-    version: string,
-  ): Promise<PackageManifest | undefined>;
-  /** The first row for a package version stays. A later write is ignored. */
-  putIfAbsent(manifest: PackageManifest): Promise<PackageManifest>;
+    source: string,
+    tag: string,
+  ): Promise<ToolManifest | undefined>;
+  /** The first manifest for a source and tag stays. Later writes are ignored. */
+  putIfAbsent(manifest: ToolManifest): Promise<ToolManifest>;
 };
 
 export type PathAsset = {
@@ -28,18 +28,18 @@ export type PathAsset = {
 export type PathReader = (asset: PathAsset, command: string) => Promise<string>;
 
 /**
- * The store keeps a published version stable across restarts.
+ * The store keeps a source release stable across restarts.
  * The map only joins builds that are already running in this process.
  */
 export function createBuilder(
   latest: ReleaseSource,
   readPath: PathReader,
   store: ManifestStore,
-): (id: PackageId) => Promise<PackageManifest> {
-  const cache = new Map<string, Promise<PackageManifest>>();
+): (id: Repository) => Promise<ToolManifest> {
+  const cache = new Map<string, Promise<ToolManifest>>();
   return async function manifestFor(id) {
     const release = await latest(id.owner, id.repo);
-    const key = `@tr/${id.owner}--${id.repo}@${release.version}`;
+    const key = JSON.stringify([release.source, release.tag]);
     let pending = cache.get(key);
     if (!pending) {
       pending = loadOrBuild(id, release, readPath, store);
@@ -51,15 +51,14 @@ export function createBuilder(
 }
 
 async function loadOrBuild(
-  id: PackageId,
+  id: Repository,
   release: Release,
   readPath: PathReader,
   store: ManifestStore,
-): Promise<PackageManifest> {
-  const packageName = `@tr/${id.owner}--${id.repo}`;
-  const stored = await store.get(packageName, release.version);
+): Promise<ToolManifest> {
+  const stored = await store.get(release.source, release.tag);
   if (stored) return stored;
-  const selected = selectRelease(id.owner, id.repo, release);
+  const selected = selectRelease(id, release);
   const platforms = [];
   for (const item of selected.platforms) {
     if (item.archive === "raw") {
