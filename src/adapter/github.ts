@@ -1,5 +1,10 @@
 import * as v from "valibot";
 import {
+  type GitHubCacheTtl,
+  githubCacheTtlFrom,
+  type GitHubReleaseCache,
+} from "./github_cache.ts";
+import {
   NotFoundError,
   type Release,
   releaseFrom,
@@ -47,8 +52,15 @@ export function parseGitHubRelease(
 /** Credentials apply only to GitHub API calls, never release asset downloads. */
 export function createGitHubSource({
   token,
+  cache,
+  cacheTtl = githubCacheTtlFrom(),
   fetch: fetchImpl = fetch,
-}: { token?: string; fetch?: typeof fetch } = {}) {
+}: {
+  token?: string;
+  cache?: GitHubReleaseCache;
+  cacheTtl?: GitHubCacheTtl;
+  fetch?: typeof fetch;
+} = {}) {
   const headers = new Headers({
     accept: "application/vnd.github+json",
     "user-agent": "tr",
@@ -57,17 +69,37 @@ export function createGitHubSource({
   if (token) headers.set("authorization", `Bearer ${token}`);
 
   return async (owner: string, repo: string): Promise<Release> => {
-    const url = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+    const url =
+      `https://api.github.com/repos/${owner.toLowerCase()}/${repo.toLowerCase()}/releases/latest`;
+    const cached = await cache?.get(url);
+    const storedRelease = cached
+      ? parseGitHubRelease(owner, repo, JSON.parse(cached.body))
+      : undefined;
+    const age = cached ? Date.now() - cached.checkedAt : undefined;
+    if (storedRelease && age !== undefined && age >= 0 && age < cacheTtl) {
+      return storedRelease;
+    }
+    // Conditional headers belong to this repository, not to the shared client.
+    const requestHeaders = new Headers(headers);
+    if (cached?.etag) requestHeaders.set("if-none-match", cached.etag);
     let response: Response;
     try {
       response = await fetchImpl(url, {
-        headers,
+        headers: requestHeaders,
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
       throw new ResolveError("GitHub release request failed");
     }
 
+    if (response.status === 304 && cached && storedRelease) {
+      await cache?.putIfUnchanged(url, {
+        body: cached.body,
+        etag: response.headers.get("etag") ?? cached.etag,
+        checkedAt: Date.now(),
+      }, cached.revision);
+      return storedRelease;
+    }
     if (response.status === 404) throw new NotFoundError(`${owner}/${repo}`);
     if (!response.ok) {
       throw new ResolveError(
@@ -82,6 +114,12 @@ export function createGitHubSource({
       throw new ResolveError("GitHub release request failed");
     }
 
-    return parseGitHubRelease(owner, repo, body);
+    const release = parseGitHubRelease(owner, repo, body);
+    await cache?.putIfUnchanged(url, {
+      body: JSON.stringify(body),
+      etag: response.headers.get("etag"),
+      checkedAt: Date.now(),
+    }, cached?.revision);
+    return release;
   };
 }

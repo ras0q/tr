@@ -7,7 +7,7 @@ import {
 } from "../core/resolve.ts";
 
 /**
- * Statements the manifest table needs.
+ * SQL operations shared by adapter stores.
  * D1 implements them as `prepare(sql).bind(...params).first()` and `.run()`.
  * `first` returns `undefined` when the query has no row.
  */
