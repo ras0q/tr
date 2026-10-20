@@ -1,46 +1,54 @@
-# tr
+# tr (Tool Registry)
 
-Tool Registry. Install a CLI published on GitHub Releases as an npm dependency.
+Install CLIs from GitHub Releases as npm dependencies. Keep your tools alongside
+your project's dependencies and lockfile.
 
-tr serves package metadata and a launcher. [DotSlash](https://dotslash-cli.com/)
-downloads the binary, checks its SHA-256, and runs it on your machine.
+Packages are named `@tr/<owner>--<repo>`. For example, `@tr/cli--cli` installs
+GitHub CLI (`gh`) from [cli/cli](https://github.com/cli/cli).
 
-`@tr/<owner>--<repo>` is the latest GitHub Release of that repository. The
-registry reads asset names to choose an archive per OS and architecture, copies
-each asset's size and SHA-256 from the release metadata, and reads member names
-once to find the executable. `@tr/cli--cli` is `gh` from
-[cli/cli](https://github.com/cli/cli).
+## Usage
 
-## Run locally
-
-```sh
-deno task start
-```
-
-The registry listens on `127.0.0.1:8787`. The first request for a source release
-stores its manifest in `tr.sqlite`.
-
-## Install
-
+With Node.js 20+ and npm 7+, add the preview registry to your project's
 `.npmrc`:
 
-```
-@tr:registry=http://127.0.0.1:8787/
+```ini
+@tr:registry=https://tr.ras0q.com
 ```
 
+Install and run a tool:
+
 ```sh
-npm install -D @tr/cli--cli
+npm install --save-dev @tr/cli--cli
 npx gh --version
 ```
 
-`npm install` fetches metadata and the launcher. The `gh` binary is downloaded
-when you run the command.
+Run tools through `npx` or npm scripts so their interpreter is on `PATH`.
 
-Core manifests contain source URLs, upstream tags, and executable information.
-They are independent of npm names and version rules, so future PyPI or cargo
-adapters can consume the same manifests.
+## How it works
 
-The scope-independent manifests use a new `tool_manifest` table. Existing
-`manifest` rows are left untouched and are not reused.
+tr packages a Meta's [DotSlash](https://dotslash-cli.com/) manifest instead of the
+tool's binary. On first use, DotSlash downloads the binary for your OS and
+architecture, verifies its SHA-256, and caches it for subsequent runs.
 
-Development setup is in [CONTRIBUTING.md](CONTRIBUTING.md).
+```mermaid
+sequenceDiagram
+  participant User as User's machine
+  participant tr as tr registry
+  participant GitHub as GitHub Releases
+  Note over User: npm install @tr/cli--cli
+  User->>tr: GET /@tr%2fcli--cli
+  tr->>GitHub: Resolve release and executable
+  GitHub-->>tr: Release metadata and archive data
+  tr-->>User: npm package with DotSlash manifest
+  Note over User: npx gh
+  User->>GitHub: DotSlash downloads the platform binary
+  GitHub-->>User: Binary asset
+  Note over User: DotSlash verifies, caches, and runs gh
+```
+
+New packages resolve the latest public GitHub Release. Previously published
+exact versions remain available; looking up unpublished older releases is not
+yet supported.
+
+For local development, self-hosting, and contribution guidelines, see
+[CONTRIBUTING.md](CONTRIBUTING.md).

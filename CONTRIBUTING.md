@@ -1,5 +1,29 @@
 # Contributing
 
+## Local development
+
+Start the registry:
+
+```sh
+deno task start
+# → http://127.0.0.1:8787/
+```
+
+Set `TR_GITHUB_TOKEN` in the process environment to authenticate GitHub API
+requests. Without it, local development uses unauthenticated requests. The token
+is sent only to the GitHub API, never to release asset downloads.
+
+## Cloudflare staging
+
+Run the local Workers runtime with simulated D1 and R2:
+
+```sh
+deno task cf dev
+# → http://127.0.0.1:8788/
+```
+
+## Contribution guidelines
+
 Ask before adding product behavior that [README.md](README.md) does not specify.
 
 Production modules under `src/` use Node.js built-ins (`node:`) and Web APIs
