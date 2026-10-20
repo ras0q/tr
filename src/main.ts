@@ -6,6 +6,7 @@ import { createManifestStore } from "./adapter/store.ts";
 import { createBuilder } from "./core/build.ts";
 import { argv } from "node:process";
 import { parseOptions } from "./cli.ts";
+import { createFileObjectStore } from "./adapter/filesystem.ts";
 
 const options = parseOptions(argv.slice(2));
 const store = await createManifestStore(createSqlite("tr.sqlite"));
@@ -14,7 +15,11 @@ const manifestFor = createBuilder(
   readExecutablePath,
   store,
 );
-const app = createNpmRegistry(options.npmScope, manifestFor);
+const app = createNpmRegistry(
+  options.npmScope,
+  manifestFor,
+  createFileObjectStore("tr.objects"),
+);
 
 // `deno serve` owns the socket and requires a default export with `fetch`.
 // Hono's fetch is that handler, so this module stays free of Deno.serve.

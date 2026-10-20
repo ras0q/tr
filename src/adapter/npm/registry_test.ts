@@ -13,6 +13,7 @@ import { createSqlite } from "../sqlite.ts";
 import { createManifestStore } from "../store.ts";
 import { createNpmRegistry } from "./registry.ts";
 import { npmScopeFrom } from "./package.ts";
+import { type ObjectStore } from "../../core/storage.ts";
 
 const encode = new TextEncoder();
 const origin = "http://127.0.0.1:8787";
@@ -22,6 +23,15 @@ Deno.test("registry responses", async (t) => {
   const body = await ghBody();
   let tamper = false;
   const store = await createManifestStore(createSqlite(":memory:"));
+  const data = new Map<string, Uint8Array<ArrayBuffer>>();
+  const objects: ObjectStore = {
+    get: (key) => Promise.resolve(data.get(key)?.slice()),
+    putIfAbsent(key, body) {
+      if (data.has(key)) return Promise.resolve(false);
+      data.set(key, new Uint8Array(body));
+      return Promise.resolve(true);
+    },
+  };
   const app = createNpmRegistry(
     npmScopeFrom("@tr"),
     createBuilder(
@@ -42,6 +52,7 @@ Deno.test("registry responses", async (t) => {
       readFixturePath,
       store,
     ),
+    objects,
   );
 
   const meta = await app.request(`${origin}/@tr%2fcli--cli`);
@@ -70,6 +81,7 @@ Deno.test("registry responses", async (t) => {
       () => Promise.reject(new Error("unread")),
       await createManifestStore(createSqlite(":memory:")),
     ),
+    objects,
   );
   const broken = await brokenApp.request(`${origin}/@tr%2fcli--cli`);
 

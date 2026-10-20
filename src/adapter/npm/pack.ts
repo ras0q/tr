@@ -15,6 +15,14 @@ export type PackedNpmPackage = {
   integrity: string;
 };
 
+export type NpmVersionMetadata = {
+  name: string;
+  version: string;
+  bin: Record<string, string>;
+  dependencies: Record<string, string>;
+  dist: { tarball: string; shasum: string; integrity: string };
+};
+
 function renderPackageJson(resolved: NpmPackage): string {
   const launcher = `bin/${resolved.command}.mjs`;
   return JSON.stringify(
@@ -83,15 +91,14 @@ export async function packNpmPackage(
 }
 
 export function packument(
-  resolved: NpmPackage,
-  packed: PackedNpmPackage,
+  metadata: NpmVersionMetadata,
   origin: string,
 ) {
   return {
-    name: resolved.packageName,
-    "dist-tags": { latest: packed.version },
+    name: metadata.name,
+    "dist-tags": { latest: metadata.version },
     versions: {
-      [packed.version]: versionMetadata(resolved, packed, origin),
+      [metadata.version]: withTarballOrigin(metadata, origin),
     },
   };
 }
@@ -99,8 +106,7 @@ export function packument(
 export function versionMetadata(
   resolved: NpmPackage,
   packed: PackedNpmPackage,
-  origin: string,
-) {
+): NpmVersionMetadata {
   const unscoped = resolved.packageName.split("/")[1];
   return {
     name: resolved.packageName,
@@ -108,10 +114,22 @@ export function versionMetadata(
     bin: { [resolved.command]: `bin/${resolved.command}.mjs` },
     dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
     dist: {
-      tarball:
-        `${origin}/${resolved.packageName}/-/${unscoped}-${packed.version}.tgz`,
+      tarball: `/${resolved.packageName}/-/${unscoped}-${packed.version}.tgz`,
       shasum: packed.shasum,
       integrity: packed.integrity,
+    },
+  };
+}
+
+export function withTarballOrigin(
+  metadata: NpmVersionMetadata,
+  origin: string,
+): NpmVersionMetadata {
+  return {
+    ...metadata,
+    dist: {
+      ...metadata.dist,
+      tarball: new URL(metadata.dist.tarball, origin).href,
     },
   };
 }
