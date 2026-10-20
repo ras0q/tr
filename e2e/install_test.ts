@@ -4,6 +4,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const fixture = fileURLToPath(new URL(".", import.meta.url));
 
 Deno.test("npm install @tr/cli--cli in a package directory", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "tr-e2e-" });
   const server = new Deno.Command(Deno.execPath(), {
     args: [
       "serve",
@@ -11,18 +12,20 @@ Deno.test("npm install @tr/cli--cli in a package directory", async () => {
       "--allow-env=TR_GITHUB_TOKEN",
       "--allow-read",
       "--allow-write",
+      "--config",
+      `${root}/deno.json`,
       "--host=127.0.0.1",
       "--port=0",
-      "src/main.ts",
+      `${root}/src/main.ts`,
     ],
-    cwd: root,
+    // Fresh storage verifies this generator without replacing published artifacts.
+    cwd: dir,
     stdout: "piped",
     stderr: "piped",
     env: { ...Deno.env.toObject(), NO_COLOR: "1" },
   }).spawn();
   discard(server.stdout);
 
-  const dir = await Deno.makeTempDir({ prefix: "tr-e2e-" });
   try {
     // Port 0 avoids clashing with `deno task start` on 8787.
     const port = await listenPort(server.stderr);
@@ -52,17 +55,18 @@ Deno.test("npm install @tr/cli--cli in a package directory", async () => {
       await Deno.readTextFile(`${dir}/node_modules/@tr/cli--cli/package.json`),
     );
     if (
-      installed.name !== "@tr/cli--cli" || installed.bin?.gh !== "bin/gh.mjs"
+      installed.name !== "@tr/cli--cli" ||
+      installed.bin?.gh !== "gh.dotslash"
     ) {
       throw new Error(
         `unexpected package metadata: ${JSON.stringify(installed)}`,
       );
     }
-    const launcher = await Deno.readTextFile(
-      `${dir}/node_modules/@tr/cli--cli/bin/gh.mjs`,
+    const manifest = await Deno.readTextFile(
+      `${dir}/node_modules/@tr/cli--cli/gh.dotslash`,
     );
-    if (!launcher.startsWith("#!/usr/bin/env node\n")) {
-      throw new Error("launcher is missing the node shebang");
+    if (!manifest.startsWith("#!/usr/bin/env dotslash\n")) {
+      throw new Error("manifest is missing the dotslash shebang");
     }
     const lock = await Deno.readTextFile(`${dir}/package-lock.json`);
     if (!lock.includes(`http://127.0.0.1:${port}/@tr/cli--cli/-/cli--cli-`)) {

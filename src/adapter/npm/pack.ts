@@ -24,13 +24,11 @@ export type NpmVersionMetadata = {
 };
 
 function renderPackageJson(resolved: NpmPackage): string {
-  const launcher = `bin/${resolved.command}.mjs`;
   return JSON.stringify(
     {
       name: resolved.packageName,
       version: resolved.version,
-      type: "module",
-      bin: { [resolved.command]: launcher },
+      bin: { [resolved.command]: `${resolved.command}.dotslash` },
       dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
     },
     null,
@@ -38,45 +36,12 @@ function renderPackageJson(resolved: NpmPackage): string {
   ) + "\n";
 }
 
-function renderLauncher(command: string): string {
-  return `#!/usr/bin/env node
-import { spawn } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import dotslash from "fb-dotslash";
-
-const manifest = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "manifests",
-  "${command}.dotslash",
-);
-const child = spawn(dotslash, [manifest, ...process.argv.slice(2)], {
-  stdio: "inherit",
-});
-child.on("error", () => {
-  process.exit(1);
-});
-child.on("exit", (code, signal) => {
-  if (signal) {
-    process.kill(process.pid, signal);
-    return;
-  }
-  process.exit(code === null ? 1 : code);
-});
-`;
-}
-
 export async function packNpmPackage(
   resolved: NpmPackage,
 ): Promise<PackedNpmPackage> {
   const tar = await tarFiles([
     ["package/package.json", renderPackageJson(resolved)],
-    [`package/bin/${resolved.command}.mjs`, renderLauncher(resolved.command)],
-    [
-      `package/manifests/${resolved.command}.dotslash`,
-      renderDotslash(resolved),
-    ],
+    [`package/${resolved.command}.dotslash`, renderDotslash(resolved)],
   ]);
   // Native zlib output differs by runtime. A published tarball for one version must not.
   const tarball = gzipSync(tar, { mtime: 0 });
@@ -111,7 +76,7 @@ export function versionMetadata(
   return {
     name: resolved.packageName,
     version: packed.version,
-    bin: { [resolved.command]: `bin/${resolved.command}.mjs` },
+    bin: { [resolved.command]: `${resolved.command}.dotslash` },
     dependencies: { "fb-dotslash": FB_DOTSLASH_VERSION },
     dist: {
       tarball: `/${resolved.packageName}/-/${unscoped}-${packed.version}.tgz`,
