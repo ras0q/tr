@@ -36,15 +36,15 @@ export function createBuilder(
   readPath: PathReader,
   store: ManifestStore,
 ): (id: Repository) => Promise<ToolManifest> {
-  const cache = new Map<string, Promise<ToolManifest>>();
+  const inFlight = new Map<string, Promise<ToolManifest>>();
   return async function manifestFor(id) {
     const release = await latest(id.owner, id.repo);
     const key = JSON.stringify([release.source, release.tag]);
-    let pending = cache.get(key);
+    let pending = inFlight.get(key);
     if (!pending) {
-      pending = loadOrBuild(id, release, readPath, store);
-      cache.set(key, pending);
-      pending.catch(() => cache.delete(key));
+      pending = loadOrBuild(id, release, readPath, store)
+        .finally(() => inFlight.delete(key));
+      inFlight.set(key, pending);
     }
     return await pending;
   };
