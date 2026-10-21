@@ -39,12 +39,13 @@ export function createNpmRegistry(
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>tr npm registry</title>
+    <title>tr: Your CLI tools, managed with npm</title>
   </head>
   <body>
     <main>
-      <h1>tr npm registry</h1>
-      <p>Install command line tools from GitHub Releases as npm packages.</p>
+      <h1>tr</h1>
+      <p>Your CLI tools, managed with npm.</p>
+      <p>Install CLI tools from GitHub Releases and manage them in your project's package.json and lockfile.</p>
       <p>Configure this registry in your <code>.npmrc</code>:</p>
       <pre><code>${scope}:registry=${origin}</code></pre>
       <p>Packages use the name <code>${scope}/&lt;owner&gt;--&lt;repo&gt;</code>. For example, <code>${scope}/cli--cli</code> provides GitHub CLI (<code>gh</code>).</p>

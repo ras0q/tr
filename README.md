@@ -1,7 +1,6 @@
 # tr (Tool Registry)
 
-Install CLIs from GitHub Releases as npm dependencies. Keep your tools alongside
-your project's dependencies and lockfile.
+Install CLI tools from GitHub Releases and manage them in your `package.json`.
 
 Packages are named `@tr/<owner>--<repo>`. For example, `@tr/cli--cli` installs
 GitHub CLI (`gh`) from [cli/cli](https://github.com/cli/cli).
@@ -26,8 +25,8 @@ Run tools through `npx` or npm scripts so their interpreter is on `PATH`.
 
 ## How it works
 
-tr packages a Meta's [DotSlash](https://dotslash-cli.com/) manifest instead of the
-tool's binary. On first use, DotSlash downloads the binary for your OS and
+tr packages a Meta's [DotSlash](https://dotslash-cli.com/) manifest instead of
+the tool's binary. On first use, DotSlash downloads the binary for your OS and
 architecture, verifies its SHA-256, and caches it for subsequent runs.
 
 ```mermaid
