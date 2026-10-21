@@ -2,6 +2,8 @@
 
 Install CLI tools from GitHub Releases and manage them in your `package.json`.
 
+![demo](docs/demo.gif)
+
 Packages are named `@tr/<owner>--<repo>`. For example, `@tr/cli--cli` installs
 GitHub CLI (`gh`) from [cli/cli](https://github.com/cli/cli).
 
