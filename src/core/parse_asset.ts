@@ -182,6 +182,12 @@ export function parseAssetName(assetName: string, version: string): AssetInfo {
       info.darwinAll = true;
     }
   }
+  // Universal macOS assets support both architectures; only other unknowns
+  // fall back to amd64 with a lower preference than explicitly named assets.
+  if (info.arch === "" && !info.darwinAll) {
+    info.arch = ARCH_AMD64;
+    info.score = -2;
+  }
   if (info.os === OS_LINUX && low.includes("musl")) info.musl = true;
   info.format = formatOf(assetName);
   if (info.format !== FORMAT_RAW) {
@@ -216,7 +222,7 @@ export function getOSArch(
   let archive: AssetInfo | undefined;
   let raw: AssetInfo | undefined;
   for (const asset of assets) {
-    if ((asset.os !== goos || asset.arch !== goarch) && !asset.darwinAll) {
+    if (asset.os !== goos || (asset.arch !== goarch && !asset.darwinAll)) {
       continue;
     }
     if (asset.format === "" || asset.format === FORMAT_RAW) {
@@ -301,10 +307,6 @@ function setArch(assetName: string, low: string, info: AssetInfo): void {
     info.template = replaceOnce(info.template, spelled, "{{.Arch}}");
     if (known.arch === ARCH_ARM64 && known.name === "arm") info.score -= 1;
     break;
-  }
-  if (info.arch === "") {
-    info.arch = ARCH_AMD64;
-    info.score = -2;
   }
 }
 

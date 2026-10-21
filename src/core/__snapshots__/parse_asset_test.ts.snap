@@ -25,14 +25,14 @@ snapshot[`parseAssetName matches aqua's cases 1`] = `
     template: "tool-{{.Version}}-{{.OS}}-{{.Arch}}",
   },
   {
-    arch: "amd64",
-    darwinAll: false,
+    arch: "",
+    darwinAll: true,
     format: "tar.gz",
     label: "darwin all",
     musl: false,
     os: "darwin",
     replacements: {},
-    score: -2,
+    score: 0,
     template: "tool-{{.Version}}-{{.OS}}-all.{{.Format}}",
   },
   {
