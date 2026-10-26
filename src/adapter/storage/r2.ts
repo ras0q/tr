@@ -1,5 +1,5 @@
 import { type R2Bucket } from "@cloudflare/workers-types";
-import { type ObjectStore } from "../core/storage.ts";
+import { type ObjectStore } from "../../core/storage.ts";
 
 export function createR2ObjectStore(bucket: R2Bucket): ObjectStore {
   return {

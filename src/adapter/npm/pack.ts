@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { gzipSync } from "fflate";
 import { pack as createTarPack } from "tar-stream";
-import { renderDotslash } from "../dotslash.ts";
+import { renderDotslash } from "../dotslash/render.ts";
 import { type NpmPackage } from "./package.ts";
 
 const FB_DOTSLASH_RANGE = "^0.5.8";

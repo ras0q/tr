@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { createGitHubSource } from "./github.ts";
+import { createGitHubSource } from "./source.ts";
 
 test("GitHub release schema", async () => {
   const release = {

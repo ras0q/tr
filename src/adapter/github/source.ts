@@ -1,10 +1,6 @@
 import * as v from "valibot";
-import {
-  type GitHubCacheTtl,
-  githubCacheTtlFrom,
-  type GitHubReleaseCache,
-} from "./github_cache.ts";
-import { NotFoundError, type Release, releaseFrom, ResolveError } from "../core/resolve.ts";
+import { type GitHubCacheTtl, githubCacheTtlFrom, type GitHubReleaseCache } from "./cache.ts";
+import { NotFoundError, type Release, releaseFrom, ResolveError } from "../../core/resolve.ts";
 
 const ReleaseShape = v.object({
   tag_name: v.string(),

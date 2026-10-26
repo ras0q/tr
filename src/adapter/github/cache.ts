@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import { type Sql } from "./store.ts";
+import { type Sql } from "../storage/manifest.ts";
 
 declare const githubCacheTtl: unique symbol;
 /** A validated positive duration in milliseconds. */

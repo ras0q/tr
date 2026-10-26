@@ -1,7 +1,7 @@
 import { expect, test } from "vite-plus/test";
-import { manifestFrom } from "../core/resolve.ts";
+import { manifestFrom } from "../../core/resolve.ts";
 import { createSqlite } from "./sqlite.ts";
-import { createManifestStore } from "./store.ts";
+import { createManifestStore } from "./manifest.ts";
 
 test("the first manifest for a version is the one that stays", async () => {
   const store = await createManifestStore(createSqlite(":memory:"));

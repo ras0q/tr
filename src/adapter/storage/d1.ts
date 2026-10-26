@@ -1,5 +1,5 @@
 import { type D1Database } from "@cloudflare/workers-types";
-import { type Sql } from "./store.ts";
+import { type Sql } from "./manifest.ts";
 
 export function createD1Sql(database: D1Database): Sql {
   return {

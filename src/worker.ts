@@ -1,12 +1,12 @@
 import { type D1Database, type R2Bucket } from "@cloudflare/workers-types";
-import { readExecutablePath } from "./adapter/archive.ts";
-import { createD1Sql } from "./adapter/d1.ts";
-import { createGitHubSource } from "./adapter/github.ts";
-import { createGitHubReleaseCache, githubCacheTtlFrom } from "./adapter/github_cache.ts";
+import { readExecutablePath } from "./adapter/archive/executable.ts";
+import { createD1Sql } from "./adapter/storage/d1.ts";
+import { createGitHubSource } from "./adapter/github/source.ts";
+import { createGitHubReleaseCache, githubCacheTtlFrom } from "./adapter/github/cache.ts";
 import { npmScopeFrom } from "./adapter/npm/package.ts";
 import { createNpmRegistry } from "./adapter/npm/registry.ts";
-import { createR2ObjectStore } from "./adapter/r2.ts";
-import { createManifestStore } from "./adapter/store.ts";
+import { createR2ObjectStore } from "./adapter/storage/r2.ts";
+import { createManifestStore } from "./adapter/storage/manifest.ts";
 import { createBuilder } from "./core/build.ts";
 
 type Bindings = {

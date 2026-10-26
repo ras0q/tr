@@ -1,4 +1,4 @@
-import { type ToolManifest } from "../core/resolve.ts";
+import { type ToolManifest } from "../../core/resolve.ts";
 
 /** The DotSlash manifest fields emitted by this adapter. */
 type DotslashManifest = {

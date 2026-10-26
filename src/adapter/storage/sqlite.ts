@@ -1,5 +1,5 @@
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
-import { type Sql } from "./store.ts";
+import { type Sql } from "./manifest.ts";
 
 /** Opens a SQLite file. `:memory:` is a private database for this connection. */
 export function createSqlite(path: string): Sql {

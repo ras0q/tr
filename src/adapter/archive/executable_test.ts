@@ -3,13 +3,13 @@ import { Buffer } from "node:buffer";
 import { randomFillSync } from "node:crypto";
 import { gzipSync, zipSync } from "fflate";
 import { pack as createTarPack } from "tar-stream";
-import { chooseExecutable } from "../core/resolve.ts";
+import { chooseExecutable } from "../../core/resolve.ts";
 import {
   executableInTarGz,
   locateZipDirectory,
   readExecutablePath,
   zipMemberNames,
-} from "./archive.ts";
+} from "./executable.ts";
 
 const encode = new TextEncoder();
 

@@ -1,5 +1,5 @@
 import { Gunzip } from "fflate";
-import { chooseExecutable, ResolveError } from "../core/resolve.ts";
+import { chooseExecutable, ResolveError } from "../../core/resolve.ts";
 
 const ZIP_TAIL = 65536 + 22;
 

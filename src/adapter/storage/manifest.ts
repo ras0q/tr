@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import { type ManifestStore } from "../core/build.ts";
-import { manifestFrom, ResolveError, type ToolManifest } from "../core/resolve.ts";
+import { type ManifestStore } from "../../core/build.ts";
+import { manifestFrom, ResolveError, type ToolManifest } from "../../core/resolve.ts";
 
 /**
  * SQL operations shared by adapter stores.
