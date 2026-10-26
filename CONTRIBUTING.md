@@ -28,6 +28,21 @@ The test uses the same Vite configuration with isolated, nonpersistent D1 and R2
 Run `npm run check` for formatting, linting, type checks, and unit tests through
 Vite+. Use `npm run fmt` to format and `npm run build` to build the Worker.
 
+## Staging deployment
+
+The [CI workflow](.github/workflows/ci.yml) checks and builds pull requests.
+Pushes to `main` also deploy the validated artifact to `tr-staging` in a separate
+job and verify package downloads with `npm pack`. Main branch runs are serialized.
+
+Configure these settings before the first deployment:
+
+| Setting                 | Location                    | Value                                                           |
+| ----------------------- | --------------------------- | --------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Repository Actions secret   | Token with Workers, D1, and R2 deployment permissions           |
+| `CLOUDFLARE_ACCOUNT_ID` | Repository Actions secret   | Staging Cloudflare account ID                                   |
+| `STAGING_URL`           | Repository Actions variable | Registry URL, e.g. `https://tr-staging.<subdomain>.workers.dev` |
+| `TR_GITHUB_TOKEN`       | `tr-staging` Worker secret  | GitHub API token used by the registry                           |
+
 ## Contribution guidelines
 
 Ask before adding product behavior that [README.md](README.md) does not specify.
