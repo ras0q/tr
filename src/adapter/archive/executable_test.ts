@@ -49,7 +49,8 @@ test("executable headers are read without downloading the whole file", async () 
       LICENSE: encode.encode("license"),
       "bin/gh.exe": windowsPayload,
     },
-    { mtime: new Date("1980-01-01T00:00:00Z") },
+    // ZIP stores local wall-clock time, so use the same fields in every timezone.
+    { mtime: new Date(1980, 0, 1) },
   );
   const ranges: Array<[number, number]> = [];
   const windowsExecutable = await readExecutable(

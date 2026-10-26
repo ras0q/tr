@@ -38,7 +38,7 @@ exports[`registry responses 1`] = `
     "macos-aarch64": {
       "size": 268,
       "hash": "sha256",
-      "digest": "1174196d1944ec8d6df18bbd0d71123661afb09a2e40e1d751a91e6efd9f8e15",
+      "digest": "d98ce44e18caf28d38e0b412012b5e51f73db2035000b623894c3f301e936f6b",
       "format": "zip",
       "path": "gh_2.102.0_macOS_arm64/bin/gh",
       "providers": [
@@ -50,7 +50,7 @@ exports[`registry responses 1`] = `
     "macos-x86_64": {
       "size": 268,
       "hash": "sha256",
-      "digest": "cb0e0bdcce68d755a5123b866671a59313dc1f5d1b14ea46a9e684fc1a501cbc",
+      "digest": "0d793b2b58f91a7e923834cbf04dbe273a6d1faad06136bfa387e66a4d65c4d7",
       "format": "zip",
       "path": "gh_2.102.0_macOS_amd64/bin/gh",
       "providers": [
@@ -62,7 +62,7 @@ exports[`registry responses 1`] = `
     "windows-aarch64": {
       "size": 235,
       "hash": "sha256",
-      "digest": "d4b81aab6d82a99386ffdc1e8a8932236283f6031bab4ba890b80f26813da40b",
+      "digest": "ead27b21541dfcf042ea995151fe4524f0e80797739aaa2492ac2ce27a8e5865",
       "format": "zip",
       "path": "bin/gh.exe",
       "providers": [
@@ -74,7 +74,7 @@ exports[`registry responses 1`] = `
     "windows-x86_64": {
       "size": 235,
       "hash": "sha256",
-      "digest": "79e92d533225e7e8f05048fd1caefb5543743af22430d595f73684edb5bcff8c",
+      "digest": "648da8013e858ea4b6d2ee87a3aeafda981d372e7640cc294b44ba24c22f1388",
       "format": "zip",
       "path": "bin/gh.exe",
       "providers": [
@@ -110,8 +110,8 @@ exports[`registry responses 1`] = `
           "gh": "gh.dotslash",
         },
         "dist": {
-          "integrity": "sha512-UJWpW1H6R9tFHlDDdHpcnpD5OCMu9pc7E3icxDGkBBywqxHmsuYb2AKYNqNKieak80jNu5hqcdYjuUAUndg/OA==",
-          "shasum": "a8aed008f79b8a14d2fa5355648086f047a8e0dc",
+          "integrity": "sha512-17NIid4oAh2ZoVai5N8MhXAHEo86OhpqF+JnoX2UFZpOS9uH3N+c1bbK97npEieK4ycFfCVfCorSLXdAtXsM4A==",
+          "shasum": "fa8717c47ce286a58ca3d1ebf0520c5dcf970e86",
           "tarball": "http://127.0.0.1:8787/@tr/cli--cli/-/cli--cli-2.102.0.tgz",
         },
         "name": "@tr/cli--cli",
@@ -122,7 +122,7 @@ exports[`registry responses 1`] = `
       },
     },
   },
-  "repeatIntegrity": "sha512-UJWpW1H6R9tFHlDDdHpcnpD5OCMu9pc7E3icxDGkBBywqxHmsuYb2AKYNqNKieak80jNu5hqcdYjuUAUndg/OA==",
+  "repeatIntegrity": "sha512-17NIid4oAh2ZoVai5N8MhXAHEo86OhpqF+JnoX2UFZpOS9uH3N+c1bbK97npEieK4ycFfCVfCorSLXdAtXsM4A==",
   "tarballStatus": 200,
 }
 `;

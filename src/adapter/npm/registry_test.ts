@@ -145,7 +145,8 @@ async function ghBody() {
               LICENSE: encode.encode("license"),
               [os === "windows" ? "bin/gh.exe" : `gh_2.102.0_${os}_${arch}/bin/gh`]: binary,
             },
-            { mtime: new Date("1980-01-01T00:00:00Z") },
+            // ZIP stores local wall-clock time, so use the same fields in every timezone.
+            { mtime: new Date(1980, 0, 1) },
           );
     fixtureBytes.set(url, bytes);
     assets.push({
