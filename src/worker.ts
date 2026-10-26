@@ -1,5 +1,5 @@
 import { type D1Database, type R2Bucket } from "@cloudflare/workers-types";
-import { readExecutablePath } from "./adapter/archive/executable.ts";
+import { readExecutable } from "./adapter/archive/executable.ts";
 import { createD1Sql } from "./adapter/storage/d1.ts";
 import { createGitHubSource } from "./adapter/github/source.ts";
 import { createGitHubReleaseCache, githubCacheTtlFrom } from "./adapter/github/cache.ts";
@@ -33,7 +33,7 @@ export default {
           scope,
           createBuilder(
             createGitHubSource({ token: env.TR_GITHUB_TOKEN, cache, cacheTtl }),
-            readExecutablePath,
+            readExecutable,
             store,
           ),
           createR2ObjectStore(env.TR_ARTIFACTS),

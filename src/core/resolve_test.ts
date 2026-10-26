@@ -44,7 +44,7 @@ test("selectRelease picks gh archives and skips packages", async () => {
       "sha256:5dcf12aa8525eabd0c46ec414f323ab6cf65229fc2cd46543cc705001bbaf223",
     ],
   ] as const;
-  const selected = selectRelease(
+  const selected = await selectRelease(
     { owner: "cli", repo: "cli" },
     releaseFrom({
       source: "https://github.com/cli/cli",
@@ -56,6 +56,11 @@ test("selectRelease picks gh archives and skips packages", async () => {
         url: `https://github.com/cli/cli/releases/download/v2.102.0/${name}`,
       })),
     }),
+    (asset) =>
+      Promise.resolve({
+        path: "bin/gh",
+        architectures: [asset.assetName.includes("arm64") ? "arm64" : "amd64"],
+      }),
   );
   expect({
     source: selected.source,

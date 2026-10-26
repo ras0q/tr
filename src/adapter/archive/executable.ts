@@ -1,31 +1,49 @@
-import { Gunzip } from "fflate";
-import { chooseExecutable, ResolveError } from "../../core/resolve.ts";
+import { Gunzip, Inflate } from "fflate";
+import {
+  MAX_EXECUTABLE_HEADER,
+  type OperatingSystem,
+  readArchitectures,
+} from "../../core/executable.ts";
+import {
+  chooseExecutable,
+  type ExecutableAsset,
+  type ExecutableInfo,
+  NoExecutableError,
+  ResolveError,
+} from "../../core/resolve.ts";
 
 const ZIP_TAIL = 65536 + 22;
 
-/**
- * Zip stores its member names in the central directory at the end of the file.
- * tar.gz stores each name in a header that sits in front of that member's body,
- * so the scan stops at the executable header and leaves the body unread.
- */
-export async function readExecutablePath(
-  asset: {
-    url: string;
-    archive: "tar.gz" | "zip";
-    os: string;
-    size: number;
-    assetName: string;
-  },
+/** Reads archive metadata and only the executable prefix needed for CPU detection. */
+export async function readExecutable(
+  asset: ExecutableAsset,
   command: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<string> {
+): Promise<ExecutableInfo> {
   const signal = AbortSignal.timeout(30_000);
   try {
     if (asset.archive === "zip") {
       return await executableInZip(asset, command, fetchImpl, signal);
     }
     const response = await openStream(asset.url, fetchImpl, signal);
-    return await executableInTarGz(response.body, command, asset.os);
+    if (asset.archive === "tar.gz") {
+      return await executableInTarGz(response.body, command, asset.os);
+    }
+    const reader = response.body.getReader();
+    let bytes = new Uint8Array();
+    try {
+      const architectures = await readArchitectures(async (length) => {
+        while (bytes.length < length) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          bytes = appendPrefix(bytes, value);
+        }
+        return bytes.subarray(0, length);
+      }, asset.os);
+      return { path: asset.assetName, architectures };
+    } finally {
+      await reader.cancel().catch(() => {});
+    }
   } catch (error) {
     if (error instanceof ResolveError) throw error;
     throw new ResolveError(`asset download failed: ${asset.assetName}`);
@@ -50,31 +68,53 @@ export function locateZipDirectory(tail: Uint8Array): { offset: number; length: 
 }
 
 export function zipMemberNames(directory: Uint8Array): string[] {
-  const names: string[] = [];
+  return zipMembers(directory).map((member) => member.name);
+}
+
+type ZipMember = {
+  name: string;
+  method: number;
+  flags: number;
+  compressedSize: number;
+  size: number;
+  offset: number;
+};
+
+function zipMembers(directory: Uint8Array): ZipMember[] {
+  const members: ZipMember[] = [];
   let pos = 0;
   while (pos + 46 <= directory.length) {
-    if (
-      directory[pos] !== 0x50 ||
-      directory[pos + 1] !== 0x4b ||
-      directory[pos + 2] !== 0x01 ||
-      directory[pos + 3] !== 0x02
-    )
-      break;
+    if (u32(directory, pos) !== 0x02014b50) break;
     const nameLen = u16(directory, pos + 28);
     const extraLen = u16(directory, pos + 30);
     const commentLen = u16(directory, pos + 32);
+    const end = pos + 46 + nameLen + extraLen + commentLen;
+    if (end > directory.length) {
+      throw new ResolveError("truncated zip directory");
+    }
     const name = new TextDecoder().decode(directory.subarray(pos + 46, pos + 46 + nameLen));
-    if (!name.endsWith("/")) names.push(name);
-    pos += 46 + nameLen + extraLen + commentLen;
+    const member = {
+      name,
+      method: u16(directory, pos + 10),
+      flags: u16(directory, pos + 8),
+      compressedSize: u32(directory, pos + 20),
+      size: u32(directory, pos + 24),
+      offset: u32(directory, pos + 42),
+    };
+    if ([member.compressedSize, member.size, member.offset].includes(0xffffffff)) {
+      throw new ResolveError("unsupported zip64 archive");
+    }
+    if (!name.endsWith("/")) members.push(member);
+    pos = end;
   }
-  return names;
+  return members;
 }
 
 export async function executableInTarGz(
   stream: ReadableStream<Uint8Array>,
   command: string,
-  os: string,
-): Promise<string> {
+  os: OperatingSystem,
+): Promise<ExecutableInfo> {
   const reader = stream.getReader();
   const queue = new ByteQueue();
   let finished = false;
@@ -91,7 +131,7 @@ export async function executableInTarGz(
   const fill = async (n: number) => {
     while (queue.length < n) {
       if (finished) {
-        throw new ResolveError(`no executable named ${command}`);
+        throw new NoExecutableError(`no executable named ${command}`);
       }
       const next = await reader.read();
       if (next.done) {
@@ -108,7 +148,7 @@ export async function executableInTarGz(
       await fill(512);
       const block = queue.take(512);
       if (block.every((byte) => byte === 0)) {
-        throw new ResolveError(`no executable named ${command}`);
+        throw new NoExecutableError(`no executable named ${command}`);
       }
       if (!tarChecksum(block)) {
         throw new ResolveError("archive member list failed");
@@ -125,7 +165,17 @@ export async function executableInTarGz(
       pendingName = undefined;
       const base = name.slice(name.lastIndexOf("/") + 1).toLowerCase();
       if ((header.type === "0" || header.type === "\0") && want.has(base)) {
-        return chooseExecutable([name], command, os);
+        const path = chooseExecutable([name], command, os);
+        let bytes = new Uint8Array();
+        const architectures = await readArchitectures(async (length) => {
+          const wanted = Math.min(length, header.size);
+          if (wanted > bytes.length) {
+            await fill(wanted - bytes.length);
+            bytes = appendPrefix(bytes, queue.take(wanted - bytes.length));
+          }
+          return bytes;
+        }, os);
+        return { path, architectures };
       }
       await discard(queue, fill, padded(header.size));
     }
@@ -135,11 +185,11 @@ export async function executableInTarGz(
 }
 
 async function executableInZip(
-  asset: { url: string; os: string; size: number; assetName: string },
+  asset: ExecutableAsset,
   command: string,
   fetchImpl: typeof fetch,
   signal: AbortSignal,
-): Promise<string> {
+): Promise<ExecutableInfo> {
   const located = await locate(asset.url, fetchImpl, signal);
   const tailLength = Math.min(asset.size, ZIP_TAIL);
   const tailStart = asset.size - tailLength;
@@ -157,7 +207,66 @@ async function executableInZip(
           fetchImpl,
           signal,
         );
-  return chooseExecutable(zipMemberNames(bytes), command, asset.os);
+  const members = zipMembers(bytes);
+  const path = chooseExecutable(
+    members.map((member) => member.name),
+    command,
+    asset.os,
+  );
+  const selectedMember = members.find(
+    (item) => item.name.replaceAll("\\", "/").replace(/^\.\//, "") === path,
+  );
+  if (!selectedMember) {
+    throw new NoExecutableError(`no executable named ${command}`);
+  }
+  const member: ZipMember = selectedMember;
+  if ((member.flags & 1) !== 0 || ![0, 8].includes(member.method)) {
+    throw new ResolveError("unsupported zip compression or encryption");
+  }
+  async function range(start: number, end: number): Promise<Uint8Array> {
+    if (start < 0 || end < start || end >= asset.size) {
+      throw new ResolveError("invalid zip member range");
+    }
+    if (start >= tailStart) {
+      return tail.subarray(start - tailStart, end - tailStart + 1);
+    }
+    return await readRange(located, start, end, asset, fetchImpl, signal);
+  }
+  // One range usually contains both the local header and enough compressed data.
+  let localHeader = await range(member.offset, Math.min(asset.size - 1, member.offset + 16384 - 1));
+  if (localHeader.length < 30 || u32(localHeader, 0) !== 0x04034b50) {
+    throw new ResolveError("invalid zip local header");
+  }
+  if (u16(localHeader, 8) !== member.method || (u16(localHeader, 6) & 1) !== 0) {
+    throw new ResolveError("inconsistent zip local header");
+  }
+  const dataOffset = 30 + u16(localHeader, 26) + u16(localHeader, 28);
+  if (dataOffset > localHeader.length) {
+    localHeader = await range(member.offset, member.offset + dataOffset - 1);
+  }
+  const dataStart = member.offset + dataOffset;
+  if (dataStart + member.compressedSize > asset.size) {
+    throw new ResolveError("invalid zip member size");
+  }
+  let prefix = new Uint8Array();
+  let consumed = 0;
+  const inflater = new Inflate((chunk) => {
+    prefix = appendPrefix(prefix, chunk);
+  });
+  function consume(chunk: Uint8Array) {
+    consumed += chunk.length;
+    if (member.method === 0) prefix = appendPrefix(prefix, chunk);
+    else inflater.push(chunk, consumed === member.compressedSize);
+  }
+  consume(localHeader.subarray(dataOffset, dataOffset + member.compressedSize));
+  const architectures = await readArchitectures(async (length) => {
+    while (prefix.length < Math.min(length, member.size) && consumed < member.compressedSize) {
+      const count = Math.min(16384, member.compressedSize - consumed);
+      consume(await range(dataStart + consumed, dataStart + consumed + count - 1));
+    }
+    return prefix.subarray(0, Math.min(length, member.size));
+  }, asset.os);
+  return { path, architectures };
 }
 
 async function openStream(
@@ -215,7 +324,12 @@ async function readRange(
     throw new ResolveError(`asset range failed: ${asset.assetName}`);
   }
   const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(response.headers.get("content-range") ?? "");
-  if (!match || Number(match[3]) !== asset.size) {
+  if (
+    !match ||
+    Number(match[1]) !== start ||
+    Number(match[2]) !== end ||
+    Number(match[3]) !== asset.size
+  ) {
     await response.body?.cancel();
     throw new ResolveError(`unexpected size for ${asset.assetName}`);
   }
@@ -224,6 +338,14 @@ async function readRange(
     throw new ResolveError(`unexpected size for ${asset.assetName}`);
   }
   return bytes;
+}
+
+function appendPrefix(prefix: Uint8Array, chunk: Uint8Array): Uint8Array<ArrayBuffer> {
+  const length = Math.min(MAX_EXECUTABLE_HEADER, prefix.length + chunk.length);
+  const combined = new Uint8Array(length);
+  combined.set(prefix.subarray(0, length));
+  combined.set(chunk.subarray(0, length - prefix.length), prefix.length);
+  return combined;
 }
 
 function tarHeader(block: Uint8Array): { name: string; size: number; type: string } {

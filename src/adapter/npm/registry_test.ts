@@ -4,8 +4,8 @@ import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync, zipSync } from "fflate";
 import { extract, pack as createTarPack } from "tar-stream";
 import { createBuilder } from "../../core/build.ts";
-import { chooseExecutable, releaseFrom } from "../../core/resolve.ts";
-import { executableInTarGz, locateZipDirectory, zipMemberNames } from "../archive/executable.ts";
+import { type ExecutableAsset, releaseFrom } from "../../core/resolve.ts";
+import { readExecutable } from "../archive/executable.ts";
 import { createSqlite } from "../storage/sqlite.ts";
 import { createManifestStore } from "../storage/manifest.ts";
 import { createNpmRegistry } from "./registry.ts";
@@ -48,7 +48,7 @@ test("registry responses", async () => {
           }),
         );
       },
-      readFixturePath,
+      readFixtureExecutable,
       store,
     ),
     objects,
@@ -92,30 +92,21 @@ test("registry responses", async () => {
   }).toMatchSnapshot();
 });
 
-async function readFixturePath(
-  asset: { url: string; archive: "tar.gz" | "zip"; os: string },
-  command: string,
-): Promise<string> {
+async function readFixtureExecutable(asset: ExecutableAsset, command: string) {
   const bytes = fixtureBytes.get(asset.url);
   if (!bytes) throw new Error(asset.url);
-  if (asset.archive === "zip") {
-    const directory = locateZipDirectory(bytes);
-    return chooseExecutable(
-      zipMemberNames(bytes.subarray(directory.offset, directory.offset + directory.length)),
-      command,
-      asset.os,
+  return await readExecutable(asset, command, (_input, init) => {
+    const match = /^bytes=(\d+)-(\d+)$/.exec(new Headers(init?.headers).get("range") ?? "");
+    if (!match) return Promise.resolve(new Response(new Uint8Array(bytes)));
+    const start = Number(match[1]);
+    const end = Number(match[2]);
+    return Promise.resolve(
+      new Response(new Uint8Array(bytes.subarray(start, end + 1)), {
+        status: 206,
+        headers: { "content-range": `bytes ${start}-${end}/${bytes.length}` },
+      }),
     );
-  }
-  return await executableInTarGz(
-    new ReadableStream({
-      start(controller) {
-        controller.enqueue(bytes);
-        controller.close();
-      },
-    }),
-    command,
-    asset.os,
-  );
+  });
 }
 
 async function ghBody() {
@@ -131,14 +122,28 @@ async function ghBody() {
   for (const [os, arch, ext] of specs) {
     const name = `gh_2.102.0_${os}_${arch}.${ext}`;
     const url = `https://github.com/cli/cli/releases/download/v2.102.0/${name}`;
+    const binary = new Uint8Array(128);
+    const header = new DataView(binary.buffer);
+    if (os === "linux") {
+      binary.set([0x7f, 0x45, 0x4c, 0x46, 2, 1]);
+      header.setUint16(16, 2, true);
+      header.setUint16(18, arch === "arm64" ? 183 : 62, true);
+    } else if (os === "macOS") {
+      header.setUint32(0, 0xfeedfacf, true);
+      header.setUint32(4, arch === "arm64" ? 0x0100000c : 0x01000007, true);
+    } else {
+      binary.set([0x4d, 0x5a]);
+      header.setUint32(60, 64, true);
+      header.setUint32(64, 0x50450000);
+      header.setUint16(68, arch === "arm64" ? 0xaa64 : 0x8664, true);
+    }
     const bytes =
       ext === "tar.gz"
-        ? await tarGz({ [`gh_2.102.0_${os}_${arch}/bin/gh`]: "bin" })
+        ? await tarGz({ [`gh_2.102.0_${os}_${arch}/bin/gh`]: binary })
         : zipSync(
             {
               LICENSE: encode.encode("license"),
-              [os === "windows" ? "bin/gh.exe" : `gh_2.102.0_${os}_${arch}/bin/gh`]:
-                encode.encode("bin"),
+              [os === "windows" ? "bin/gh.exe" : `gh_2.102.0_${os}_${arch}/bin/gh`]: binary,
             },
             { mtime: new Date("1980-01-01T00:00:00Z") },
           );
@@ -153,7 +158,7 @@ async function ghBody() {
   return { tag_name: "v2.102.0", assets };
 }
 
-async function tarGz(files: Record<string, string>): Promise<Uint8Array> {
+async function tarGz(files: Record<string, Uint8Array>): Promise<Uint8Array> {
   const archive = createTarPack();
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {

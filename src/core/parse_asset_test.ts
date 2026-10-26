@@ -29,7 +29,7 @@ test("getOSArch prefers the plain archive", async () => {
       "ollama-linux-amd64-rocm.tar.zst",
       "ollama-linux-amd64.tar.zst",
       "ollama-linux-amd64.tar.gz",
-    ].map((name) => parseAssetName(name, "v1.0.0")),
+    ].map((name) => ({ ...parseAssetName(name, "v1.0.0"), architectures: ["amd64"] })),
   );
   expect({ chosen: chosen?.template, format: chosen?.format }).toMatchSnapshot();
 });

@@ -1,3 +1,4 @@
+import { type Architecture, type OperatingSystem } from "./executable.ts";
 import { excludeAsset, getOSArch, parseAssetName } from "./parse_asset.ts";
 
 declare const sha256: unique symbol;
@@ -43,12 +44,30 @@ export type ToolManifest = SelectedRelease & {
   platforms: Array<SelectedPlatform & { path: string }>;
 };
 
+export type ExecutableAsset = {
+  url: string;
+  archive: "raw" | "tar.gz" | "zip";
+  os: OperatingSystem;
+  size: number;
+  assetName: string;
+};
+
+export type ExecutableInfo = {
+  path: string;
+  architectures: readonly Architecture[];
+};
+
+/** Reads the executable path and supported CPUs without downloading its whole body. */
+export type ExecutableReader = (asset: ExecutableAsset, command: string) => Promise<ExecutableInfo>;
+
 export class ResolveError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ResolveError";
   }
 }
+
+export class NoExecutableError extends ResolveError {}
 
 export class NotFoundError extends Error {
   constructor(message: string) {
@@ -153,16 +172,50 @@ export function releaseFrom(input: {
   };
 }
 
-export function selectRelease({ owner, repo }: Repository, release: Release): SelectedRelease {
-  const parsed = release.assets.flatMap((asset) => {
-    if (excludeAsset(repo, asset.name)) return [];
+export async function selectRelease(
+  { owner, repo }: Repository,
+  release: Release,
+  readExecutable: ExecutableReader,
+): Promise<ToolManifest> {
+  const parsed = [];
+  const inspected = new Map<string, ExecutableInfo>();
+  for (const asset of release.assets) {
+    if (excludeAsset(repo, asset.name)) continue;
     const info = parseAssetName(asset.name, release.tag);
+    const os = info.os;
+    if (os !== "linux" && os !== "darwin" && os !== "windows") continue;
     const archive = listable(info.format);
-    if (!archive) return [];
-    return [{ asset, info, archive }];
-  });
+    if (!archive) continue;
+    const command = parseCommand(info.template, repo);
+    let executable = inspected.get(asset.url);
+    if (!executable) {
+      try {
+        executable = await readExecutable(
+          {
+            url: asset.url,
+            archive,
+            os,
+            size: asset.size,
+            assetName: asset.name,
+          },
+          command,
+        );
+      } catch (error) {
+        if (error instanceof NoExecutableError) continue;
+        throw error;
+      }
+      inspected.set(asset.url, executable);
+    }
+    parsed.push({
+      asset,
+      info: { ...info, architectures: executable.architectures },
+      archive,
+      command,
+      path: executable.path,
+    });
+  }
 
-  const platforms: SelectedPlatform[] = [];
+  const platforms: ToolManifest["platforms"] = [];
   const commands: string[] = [];
   for (const target of TARGETS) {
     const chosen = getOSArch(
@@ -173,7 +226,7 @@ export function selectRelease({ owner, repo }: Repository, release: Release): Se
     if (!chosen) continue;
     const match = parsed.find((item) => item.info === chosen);
     if (!match) continue;
-    commands.push(parseCommand(chosen.template, repo));
+    commands.push(match.command);
     platforms.push({
       platform: target.platform,
       os: target.os,
@@ -182,6 +235,7 @@ export function selectRelease({ owner, repo }: Repository, release: Release): Se
       archive: match.archive,
       url: match.asset.url,
       assetName: match.asset.name,
+      path: match.path,
     });
   }
   if (platforms.length === 0) {
@@ -238,7 +292,7 @@ export function chooseExecutable(paths: readonly string[], command: string, os: 
     (a, b) => a.length - b.length || a.localeCompare(b),
   );
   if (ranked.length === 0) {
-    throw new ResolveError(`no executable named ${command}`);
+    throw new NoExecutableError(`no executable named ${command}`);
   }
   if (ranked.length > 1 && ranked[0].length === ranked[1].length) {
     throw new ResolveError(`ambiguous executable for ${command}`);

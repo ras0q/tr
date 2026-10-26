@@ -1,11 +1,21 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`member names come from the directory, not the file body 1`] = `
+exports[`executable headers are read without downloading the whole file 1`] = `
 {
   "goreleaser": "foo_1.0.0_linux_amd64/foo",
-  "linux": "gh_2.102.0_linux_amd64/bin/gh",
+  "linux": {
+    "architectures": [
+      "amd64",
+    ],
+    "path": "gh_2.102.0_linux_amd64/bin/gh",
+  },
   "linuxStoppedEarly": true,
-  "windows": "bin/gh.exe",
+  "windows": {
+    "architectures": [
+      "amd64",
+    ],
+    "path": "bin/gh.exe",
+  },
   "windowsNames": "bin/gh.exe",
   "windowsStartedAtTail": true,
 }

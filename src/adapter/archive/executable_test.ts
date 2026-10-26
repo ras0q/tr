@@ -7,20 +7,23 @@ import { chooseExecutable } from "../../core/resolve.ts";
 import {
   executableInTarGz,
   locateZipDirectory,
-  readExecutablePath,
+  readExecutable,
   zipMemberNames,
 } from "./executable.ts";
 
 const encode = new TextEncoder();
 
-test("member names come from the directory, not the file body", async () => {
+test("executable headers are read without downloading the whole file", async () => {
   const payload = randomFillSync(new Uint8Array(256 * 1024));
+  payload.set([0x7f, 0x45, 0x4c, 0x46, 2, 1]);
+  new DataView(payload.buffer).setUint16(16, 2, true);
+  new DataView(payload.buffer).setUint16(18, 62, true);
   const linux = await tarGz({
     "gh_2.102.0_linux_amd64/LICENSE": encode.encode("license"),
     "gh_2.102.0_linux_amd64/bin/gh": payload,
   });
   let pulled = 0;
-  const linuxPath = await executableInTarGz(
+  const linuxExecutable = await executableInTarGz(
     new ReadableStream({
       pull(controller) {
         if (pulled >= linux.length) {
@@ -36,6 +39,11 @@ test("member names come from the directory, not the file body", async () => {
     "linux",
   );
   const windowsPayload = randomFillSync(new Uint8Array(80 * 1024));
+  windowsPayload.set([0x4d, 0x5a]);
+  const pe = new DataView(windowsPayload.buffer);
+  pe.setUint32(60, 64, true);
+  pe.setUint32(64, 0x50450000);
+  pe.setUint16(68, 0x8664, true);
   const windows = zipSync(
     {
       LICENSE: encode.encode("license"),
@@ -44,7 +52,7 @@ test("member names come from the directory, not the file body", async () => {
     { mtime: new Date("1980-01-01T00:00:00Z") },
   );
   const ranges: Array<[number, number]> = [];
-  const windowsPath = await readExecutablePath(
+  const windowsExecutable = await readExecutable(
     {
       url: "https://github.com/cli/cli/releases/download/v2.102.0/gh.zip",
       archive: "zip",
@@ -81,9 +89,9 @@ test("member names come from the directory, not the file body", async () => {
   const tail = windows.subarray(tailStart);
   const directory = locateZipDirectory(tail);
   expect({
-    linux: linuxPath,
+    linux: linuxExecutable,
     linuxStoppedEarly: pulled < linux.length,
-    windows: windowsPath,
+    windows: windowsExecutable,
     windowsStartedAtTail: (ranges[0]?.[0] ?? 0) > 0,
     windowsNames: chooseExecutable(
       zipMemberNames(windows.subarray(directory.offset, directory.offset + directory.length)),

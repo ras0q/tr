@@ -10,8 +10,6 @@ exports[`getOSArch prefers the plain archive 1`] = `
 exports[`parseAssetName matches aqua's cases 1`] = `
 [
   {
-    "arch": "amd64",
-    "darwinAll": false,
     "format": "tar.gz",
     "label": "basic linux tar.gz",
     "musl": false,
@@ -21,8 +19,6 @@ exports[`parseAssetName matches aqua's cases 1`] = `
     "template": "tool-{{.Version}}-{{.OS}}-{{.Arch}}.{{.Format}}",
   },
   {
-    "arch": "amd64",
-    "darwinAll": false,
     "format": "raw",
     "label": "windows exe",
     "musl": false,
@@ -32,8 +28,6 @@ exports[`parseAssetName matches aqua's cases 1`] = `
     "template": "tool-{{.Version}}-{{.OS}}-{{.Arch}}",
   },
   {
-    "arch": "",
-    "darwinAll": true,
     "format": "tar.gz",
     "label": "darwin all",
     "musl": false,
@@ -43,8 +37,6 @@ exports[`parseAssetName matches aqua's cases 1`] = `
     "template": "tool-{{.Version}}-{{.OS}}-all.{{.Format}}",
   },
   {
-    "arch": "amd64",
-    "darwinAll": false,
     "format": "tar.gz",
     "label": "mixed case",
     "musl": false,
@@ -57,19 +49,15 @@ exports[`parseAssetName matches aqua's cases 1`] = `
     "template": "Tool-{{.Version}}-{{.OS}}-{{.Arch}}.{{.Format}}",
   },
   {
-    "arch": "amd64",
-    "darwinAll": false,
     "format": "tar.gz",
     "label": "no platform",
     "musl": false,
     "os": "",
     "replacements": {},
-    "score": -2,
+    "score": 0,
     "template": "tool-{{.Version}}.{{.Format}}",
   },
   {
-    "arch": "amd64",
-    "darwinAll": false,
     "format": "tar.gz",
     "label": "gh linux",
     "musl": false,
@@ -79,8 +67,6 @@ exports[`parseAssetName matches aqua's cases 1`] = `
     "template": "gh_{{trimV .Version}}_{{.OS}}_{{.Arch}}.{{.Format}}",
   },
   {
-    "arch": "arm64",
-    "darwinAll": false,
     "format": "zip",
     "label": "gh macos",
     "musl": false,
@@ -92,8 +78,6 @@ exports[`parseAssetName matches aqua's cases 1`] = `
     "template": "gh_{{trimV .Version}}_{{.OS}}_{{.Arch}}.{{.Format}}",
   },
   {
-    "arch": "amd64",
-    "darwinAll": false,
     "format": "raw",
     "label": "gh deb ignored by format",
     "musl": false,

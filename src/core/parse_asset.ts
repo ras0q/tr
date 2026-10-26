@@ -8,8 +8,6 @@
 export type AssetInfo = {
   template: string;
   os: string;
-  arch: string;
-  darwinAll: boolean;
   format: string;
   replacements: Record<string, string>;
   score: number;
@@ -156,8 +154,6 @@ export function parseAssetName(assetName: string, version: string): AssetInfo {
   const info: AssetInfo = {
     template: replaceOnce(assetName, version, "{{.Version}}"),
     os: "",
-    arch: "",
-    darwinAll: false,
     format: FORMAT_RAW,
     replacements: {},
     score: 0,
@@ -169,24 +165,6 @@ export function parseAssetName(assetName: string, version: string): AssetInfo {
   const low = assetName.toLowerCase();
   setOS(assetName, low, info);
   setArch(assetName, low, info);
-  if (info.arch === "" && info.os === OS_DARWIN) {
-    if (
-      low.includes("_all") ||
-      low.includes("-all") ||
-      low.includes(".all") ||
-      low.includes("_universal") ||
-      low.includes("-universal") ||
-      low.includes(".universal")
-    ) {
-      info.darwinAll = true;
-    }
-  }
-  // Universal macOS assets support both architectures; only other unknowns
-  // fall back to amd64 with a lower preference than explicitly named assets.
-  if (info.arch === "" && !info.darwinAll) {
-    info.arch = ARCH_AMD64;
-    info.score = -2;
-  }
   if (info.os === OS_LINUX && low.includes("musl")) info.musl = true;
   info.format = formatOf(assetName);
   if (info.format !== FORMAT_RAW) {
@@ -215,12 +193,12 @@ export function excludeAsset(pkgName: string, assetName: string): boolean {
 export function getOSArch(
   goos: string,
   goarch: string,
-  assets: readonly AssetInfo[],
+  assets: readonly (AssetInfo & { architectures: readonly string[] })[],
 ): AssetInfo | undefined {
   let archive: AssetInfo | undefined;
   let raw: AssetInfo | undefined;
   for (const asset of assets) {
-    if (asset.os !== goos || (asset.arch !== goarch && !asset.darwinAll)) {
+    if (asset.os !== goos || !asset.architectures.includes(goarch)) {
       continue;
     }
     if (asset.format === "" || asset.format === FORMAT_RAW) {
@@ -297,7 +275,6 @@ function setArch(assetName: string, low: string, info: AssetInfo): void {
     const idx = low.indexOf(known.name);
     if (idx === -1) continue;
     const spelled = assetName.slice(idx, idx + known.name.length);
-    info.arch = known.arch;
     if (spelled !== known.arch) info.replacements[known.arch] = spelled;
     info.template = replaceOnce(info.template, spelled, "{{.Arch}}");
     if (known.arch === ARCH_ARM64 && known.name === "arm") info.score -= 1;
