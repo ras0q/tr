@@ -5,13 +5,14 @@ import { join } from "node:path";
 import process from "node:process";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { test } from "node:test";
+import { expect, test } from "vite-plus/test";
+import { cloudflare } from "@cloudflare/vite-plugin";
 import { createServer } from "vite";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const fixture = fileURLToPath(new URL(".", import.meta.url));
 
-await test("npm install @tr/cli--cli in a package directory", async () => {
+test("npm install @tr/cli--cli in a package directory", async () => {
   const dir = await mkdtemp(join(tmpdir(), "tr-e2e-"));
   let server: Awaited<ReturnType<typeof createServer>> | undefined;
 
@@ -19,6 +20,7 @@ await test("npm install @tr/cli--cli in a package directory", async () => {
     server = await createServer({
       root,
       mode: "test",
+      plugins: [cloudflare({ persistState: false, inspectorPort: false })],
       server: { port: 0, open: false },
     });
     await server.listen();
@@ -36,11 +38,12 @@ await test("npm install @tr/cli--cli in a package directory", async () => {
 
     await promisify(execFile)("npm", ["install"], {
       cwd: dir,
+      timeout: 240_000,
       env: {
         ...process.env,
         NPM_CONFIG_UPDATE_NOTIFIER: "false",
         npm_config_cache: `${dir}/.npm-cache`,
-        npm_config_fetch_timeout: "900000",
+        npm_config_fetch_timeout: "120000",
         npm_config_fetch_retries: "0",
       },
     });
@@ -48,17 +51,11 @@ await test("npm install @tr/cli--cli in a package directory", async () => {
     const installed = JSON.parse(
       await readFile(`${dir}/node_modules/@tr/cli--cli/package.json`, "utf8"),
     );
-    if (installed.name !== "@tr/cli--cli" || installed.bin?.gh !== "gh.dotslash") {
-      throw new Error(`unexpected package metadata: ${JSON.stringify(installed)}`);
-    }
+    expect(installed).toMatchObject({ name: "@tr/cli--cli", bin: { gh: "gh.dotslash" } });
     const manifest = await readFile(`${dir}/node_modules/@tr/cli--cli/gh.dotslash`, "utf8");
-    if (!manifest.startsWith("#!/usr/bin/env dotslash\n")) {
-      throw new Error("manifest is missing the dotslash shebang");
-    }
+    expect(manifest).toMatch(/^#!\/usr\/bin\/env dotslash\n/);
     const lock = await readFile(`${dir}/package-lock.json`, "utf8");
-    if (!lock.includes(`http://127.0.0.1:${port}/@tr/cli--cli/-/cli--cli-`)) {
-      throw new Error("lockfile does not point at the tr registry");
-    }
+    expect(lock).toContain(`http://127.0.0.1:${port}/@tr/cli--cli/-/cli--cli-`);
     await stat(`${dir}/node_modules/.bin/gh`);
   } finally {
     try {
@@ -67,4 +64,4 @@ await test("npm install @tr/cli--cli in a package directory", async () => {
       await rm(dir, { recursive: true });
     }
   }
-});
+}, 300_000);

@@ -23,7 +23,8 @@ only to the GitHub API, never to release asset downloads. Local D1 and R2 data
 persists in `.cloudflare/`.
 
 Run `npm run e2e` to install a package against a temporary Workers registry.
-The test uses the same Vite configuration with isolated, nonpersistent D1 and R2.
+Vite+ runs it separately from unit tests, with isolated, nonpersistent D1 and R2.
+It requires GitHub and npm network access and has a five-minute timeout.
 
 Run `npm run check` for formatting, linting, type checks, and unit tests through
 Vite+. Use `npm run fmt` to format and `npm run build` to build the Worker.

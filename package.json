@@ -7,7 +7,7 @@
     "start": "vp dev",
     "build": "vp build",
     "test": "vp test",
-    "e2e": "node --test e2e/install_test.ts",
+    "e2e": "vp test --mode e2e",
     "check": "vp check && vp test",
     "fmt": "vp fmt",
     "lint": "vp lint",
