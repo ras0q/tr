@@ -1,17 +1,9 @@
-import {
-  type Release,
-  type Repository,
-  selectRelease,
-  type ToolManifest,
-} from "./resolve.ts";
+import { type Release, type Repository, selectRelease, type ToolManifest } from "./resolve.ts";
 
 export type ReleaseSource = (owner: string, repo: string) => Promise<Release>;
 
 export type ManifestStore = {
-  get(
-    source: string,
-    tag: string,
-  ): Promise<ToolManifest | undefined>;
+  get(source: string, tag: string): Promise<ToolManifest | undefined>;
   /** The first manifest for a source and tag stays. Later writes are ignored. */
   putIfAbsent(manifest: ToolManifest): Promise<ToolManifest>;
 };
@@ -42,8 +34,7 @@ export function createBuilder(
     const key = JSON.stringify([release.source, release.tag]);
     let pending = inFlight.get(key);
     if (!pending) {
-      pending = loadOrBuild(id, release, readPath, store)
-        .finally(() => inFlight.delete(key));
+      pending = loadOrBuild(id, release, readPath, store).finally(() => inFlight.delete(key));
       inFlight.set(key, pending);
     }
     return await pending;

@@ -1,3 +1,4 @@
+import { expect, test } from "vite-plus/test";
 import { Buffer } from "node:buffer";
 import { randomFillSync } from "node:crypto";
 import { gzipSync, zipSync } from "fflate";
@@ -12,7 +13,7 @@ import {
 
 const encode = new TextEncoder();
 
-Deno.test("member names come from the directory, not the file body", async (t) => {
+test("member names come from the directory, not the file body", async () => {
   const payload = randomFillSync(new Uint8Array(256 * 1024));
   const linux = await tarGz({
     "gh_2.102.0_linux_amd64/LICENSE": encode.encode("license"),
@@ -35,10 +36,13 @@ Deno.test("member names come from the directory, not the file body", async (t) =
     "linux",
   );
   const windowsPayload = randomFillSync(new Uint8Array(80 * 1024));
-  const windows = zipSync({
-    "LICENSE": encode.encode("license"),
-    "bin/gh.exe": windowsPayload,
-  }, { mtime: new Date("1980-01-01T00:00:00Z") });
+  const windows = zipSync(
+    {
+      LICENSE: encode.encode("license"),
+      "bin/gh.exe": windowsPayload,
+    },
+    { mtime: new Date("1980-01-01T00:00:00Z") },
+  );
   const ranges: Array<[number, number]> = [];
   const windowsPath = await readExecutablePath(
     {
@@ -76,16 +80,13 @@ Deno.test("member names come from the directory, not the file body", async (t) =
   const tailStart = windows.length - Math.min(windows.length, 65536 + 22);
   const tail = windows.subarray(tailStart);
   const directory = locateZipDirectory(tail);
-  await t.assertSnapshot({
+  expect({
     linux: linuxPath,
     linuxStoppedEarly: pulled < linux.length,
     windows: windowsPath,
     windowsStartedAtTail: (ranges[0]?.[0] ?? 0) > 0,
     windowsNames: chooseExecutable(
-      zipMemberNames(windows.subarray(
-        directory.offset,
-        directory.offset + directory.length,
-      )),
+      zipMemberNames(windows.subarray(directory.offset, directory.offset + directory.length)),
       "gh",
       "windows",
     ),
@@ -94,28 +95,21 @@ Deno.test("member names come from the directory, not the file body", async (t) =
       "foo",
       "linux",
     ),
-  });
+  }).toMatchSnapshot();
 });
 
-async function tarGz(
-  files: Record<string, Uint8Array | string>,
-): Promise<Uint8Array> {
+async function tarGz(files: Record<string, Uint8Array | string>): Promise<Uint8Array> {
   const archive = createTarPack();
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {
-    archive.on(
-      "data",
-      (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)),
-    );
+    archive.on("data", (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)));
     archive.on("end", () => resolve(Buffer.concat(chunks)));
     archive.on("error", reject);
   });
   for (const [name, body] of Object.entries(files)) {
     await new Promise<void>((resolve, reject) => {
-      archive.entry(
-        { name, mode: 0o755, mtime: new Date(0) },
-        Buffer.from(body),
-        (error) => error ? reject(error) : resolve(),
+      archive.entry({ name, mode: 0o755, mtime: new Date(0) }, Buffer.from(body), (error) =>
+        error ? reject(error) : resolve(),
       );
     });
   }

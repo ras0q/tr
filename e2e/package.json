@@ -1,6 +1,7 @@
 {
   "name": "tr-e2e",
   "private": true,
+  "type": "module",
   "devDependencies": {
     "@tr/cli--cli": "*"
   }

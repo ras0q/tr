@@ -1,41 +1,41 @@
-export const snapshot = {};
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-snapshot[`selectRelease picks gh archives and skips packages 1`] = `
+exports[`selectRelease picks gh archives and skips packages 1`] = `
 {
-  command: "gh",
-  platforms: [
+  "command": "gh",
+  "platforms": [
     {
-      archive: "tar.gz",
-      assetName: "gh_2.102.0_linux_amd64.tar.gz",
-      platform: "linux-x86_64",
+      "archive": "tar.gz",
+      "assetName": "gh_2.102.0_linux_amd64.tar.gz",
+      "platform": "linux-x86_64",
     },
     {
-      archive: "tar.gz",
-      assetName: "gh_2.102.0_linux_arm64.tar.gz",
-      platform: "linux-aarch64",
+      "archive": "tar.gz",
+      "assetName": "gh_2.102.0_linux_arm64.tar.gz",
+      "platform": "linux-aarch64",
     },
     {
-      archive: "zip",
-      assetName: "gh_2.102.0_macOS_amd64.zip",
-      platform: "macos-x86_64",
+      "archive": "zip",
+      "assetName": "gh_2.102.0_macOS_amd64.zip",
+      "platform": "macos-x86_64",
     },
     {
-      archive: "zip",
-      assetName: "gh_2.102.0_macOS_arm64.zip",
-      platform: "macos-aarch64",
+      "archive": "zip",
+      "assetName": "gh_2.102.0_macOS_arm64.zip",
+      "platform": "macos-aarch64",
     },
     {
-      archive: "zip",
-      assetName: "gh_2.102.0_windows_amd64.zip",
-      platform: "windows-x86_64",
+      "archive": "zip",
+      "assetName": "gh_2.102.0_windows_amd64.zip",
+      "platform": "windows-x86_64",
     },
     {
-      archive: "zip",
-      assetName: "gh_2.102.0_windows_arm64.zip",
-      platform: "windows-aarch64",
+      "archive": "zip",
+      "assetName": "gh_2.102.0_windows_arm64.zip",
+      "platform": "windows-aarch64",
     },
   ],
-  source: "https://github.com/cli/cli",
-  tag: "v2.102.0",
+  "source": "https://github.com/cli/cli",
+  "tag": "v2.102.0",
 }
 `;

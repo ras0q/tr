@@ -1,6 +1,7 @@
+import { expect, test } from "vite-plus/test";
 import { releaseFrom, selectRelease } from "./resolve.ts";
 
-Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
+test("selectRelease picks gh archives and skips packages", async () => {
   const names = [
     [
       "gh_2.102.0_checksums.txt",
@@ -56,7 +57,7 @@ Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
       })),
     }),
   );
-  await t.assertSnapshot({
+  expect({
     source: selected.source,
     tag: selected.tag,
     command: selected.command,
@@ -65,5 +66,5 @@ Deno.test("selectRelease picks gh archives and skips packages", async (t) => {
       assetName,
       archive,
     })),
-  });
+  }).toMatchSnapshot();
 });

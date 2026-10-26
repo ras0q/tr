@@ -1,14 +1,11 @@
+import { expect, test } from "vite-plus/test";
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync, zipSync } from "fflate";
 import { extract, pack as createTarPack } from "tar-stream";
 import { createBuilder } from "../../core/build.ts";
 import { chooseExecutable, releaseFrom } from "../../core/resolve.ts";
-import {
-  executableInTarGz,
-  locateZipDirectory,
-  zipMemberNames,
-} from "../archive.ts";
+import { executableInTarGz, locateZipDirectory, zipMemberNames } from "../archive.ts";
 import { createSqlite } from "../sqlite.ts";
 import { createManifestStore } from "../store.ts";
 import { createNpmRegistry } from "./registry.ts";
@@ -19,7 +16,7 @@ const encode = new TextEncoder();
 const origin = "http://127.0.0.1:8787";
 const fixtureBytes = new Map<string, Uint8Array>();
 
-Deno.test("registry responses", async (t) => {
+test("registry responses", async () => {
   const body = await ghBody();
   let tamper = false;
   const store = await createManifestStore(createSqlite(":memory:"));
@@ -38,16 +35,18 @@ Deno.test("registry responses", async (t) => {
       () => {
         const release = structuredClone(body);
         if (tamper) release.assets[0].size = 99;
-        return Promise.resolve(releaseFrom({
-          source: "https://github.com/cli/cli",
-          tag: release.tag_name,
-          assets: release.assets.map((asset) => ({
-            name: asset.name,
-            size: asset.size,
-            digest: asset.digest.slice("sha256:".length),
-            url: asset.browser_download_url,
-          })),
-        }));
+        return Promise.resolve(
+          releaseFrom({
+            source: "https://github.com/cli/cli",
+            tag: release.tag_name,
+            assets: release.assets.map((asset) => ({
+              name: asset.name,
+              size: asset.size,
+              digest: asset.digest.slice("sha256:".length),
+              url: asset.browser_download_url,
+            })),
+          }),
+        );
       },
       readFixturePath,
       store,
@@ -59,9 +58,7 @@ Deno.test("registry responses", async (t) => {
   const packument = await meta.json();
   const tarballUrl = packument.versions["2.102.0"].dist.tarball as string;
   const tarball = await app.request(tarballUrl);
-  const files = await filesInTarball(
-    new Uint8Array(await tarball.arrayBuffer()),
-  );
+  const files = await filesInTarball(new Uint8Array(await tarball.arrayBuffer()));
 
   tamper = true;
   const again = await app.request(`${origin}/@tr%2fcli--cli`);
@@ -85,14 +82,14 @@ Deno.test("registry responses", async (t) => {
   );
   const broken = await brokenApp.request(`${origin}/@tr%2fcli--cli`);
 
-  await t.assertSnapshot({
+  expect({
     packument,
     tarballStatus: tarball.status,
     files,
     repeatIntegrity: againBody.versions["2.102.0"].dist.integrity,
     missingStatus: missing.status,
     broken: { status: broken.status, body: await broken.text() },
-  });
+  }).toMatchSnapshot();
 });
 
 async function readFixturePath(
@@ -104,10 +101,7 @@ async function readFixturePath(
   if (asset.archive === "zip") {
     const directory = locateZipDirectory(bytes);
     return chooseExecutable(
-      zipMemberNames(bytes.subarray(
-        directory.offset,
-        directory.offset + directory.length,
-      )),
+      zipMemberNames(bytes.subarray(directory.offset, directory.offset + directory.length)),
       command,
       asset.os,
     );
@@ -137,13 +131,17 @@ async function ghBody() {
   for (const [os, arch, ext] of specs) {
     const name = `gh_2.102.0_${os}_${arch}.${ext}`;
     const url = `https://github.com/cli/cli/releases/download/v2.102.0/${name}`;
-    const bytes = ext === "tar.gz"
-      ? await tarGz({ [`gh_2.102.0_${os}_${arch}/bin/gh`]: "bin" })
-      : zipSync({
-        "LICENSE": encode.encode("license"),
-        [os === "windows" ? "bin/gh.exe" : `gh_2.102.0_${os}_${arch}/bin/gh`]:
-          encode.encode("bin"),
-      }, { mtime: new Date("1980-01-01T00:00:00Z") });
+    const bytes =
+      ext === "tar.gz"
+        ? await tarGz({ [`gh_2.102.0_${os}_${arch}/bin/gh`]: "bin" })
+        : zipSync(
+            {
+              LICENSE: encode.encode("license"),
+              [os === "windows" ? "bin/gh.exe" : `gh_2.102.0_${os}_${arch}/bin/gh`]:
+                encode.encode("bin"),
+            },
+            { mtime: new Date("1980-01-01T00:00:00Z") },
+          );
     fixtureBytes.set(url, bytes);
     assets.push({
       name,
@@ -159,19 +157,14 @@ async function tarGz(files: Record<string, string>): Promise<Uint8Array> {
   const archive = createTarPack();
   const chunks: Buffer[] = [];
   const done = new Promise<Buffer>((resolve, reject) => {
-    archive.on(
-      "data",
-      (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)),
-    );
+    archive.on("data", (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)));
     archive.on("end", () => resolve(Buffer.concat(chunks)));
     archive.on("error", reject);
   });
   for (const [name, body] of Object.entries(files)) {
     await new Promise<void>((resolve, reject) => {
-      archive.entry(
-        { name, mode: 0o755, mtime: new Date(0) },
-        Buffer.from(body),
-        (error) => error ? reject(error) : resolve(),
+      archive.entry({ name, mode: 0o755, mtime: new Date(0) }, Buffer.from(body), (error) =>
+        error ? reject(error) : resolve(),
       );
     });
   }
@@ -185,10 +178,7 @@ function filesInTarball(bytes: Uint8Array): Promise<Record<string, string>> {
   const done = new Promise<Record<string, string>>((resolve, reject) => {
     archive.on("entry", (header, stream, next) => {
       const chunks: Buffer[] = [];
-      stream.on(
-        "data",
-        (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)),
-      );
+      stream.on("data", (chunk: unknown) => chunks.push(Buffer.from(chunk as Uint8Array)));
       stream.on("end", () => {
         files[header.name] = Buffer.concat(chunks).toString("utf8");
         next();

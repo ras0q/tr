@@ -1,23 +1,23 @@
-export const snapshot = {};
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-snapshot[`GitHub release schema 1`] = `
+exports[`GitHub release schema 1`] = `
 {
-  httpStatus: "GitHub release request failed: 500",
-  invalidJson: "GitHub release request failed",
-  parsed: {
-    assets: [
+  "httpStatus": "GitHub release request failed: 500",
+  "invalidJson": "GitHub release request failed",
+  "parsed": {
+    "assets": [
       {
-        digest: "abababababababababababababababababababababababababababababababab",
-        name: "gh_2.102.0_linux_amd64.tar.gz",
-        size: 10,
-        url: "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_amd64.tar.gz",
+        "digest": "abababababababababababababababababababababababababababababababab",
+        "name": "gh_2.102.0_linux_amd64.tar.gz",
+        "size": 10,
+        "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_amd64.tar.gz",
       },
     ],
-    source: "https://github.com/cli/cli",
-    tag: "v2.102.0",
+    "source": "https://github.com/cli/cli",
+    "tag": "v2.102.0",
   },
-  shape: "GitHub release did not match the expected shape",
-  unexpectedDigest: "unexpected digest for gh_2.102.0_linux_amd64.tar.gz",
-  unexpectedUrl: "unexpected url for gh_2.102.0_linux_amd64.tar.gz",
+  "shape": "GitHub release did not match the expected shape",
+  "unexpectedDigest": "unexpected digest for gh_2.102.0_linux_amd64.tar.gz",
+  "unexpectedUrl": "unexpected url for gh_2.102.0_linux_amd64.tar.gz",
 }
 `;

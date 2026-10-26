@@ -51,5 +51,5 @@ New packages resolve the latest public GitHub Release. Previously published
 exact versions remain available; looking up unpublished older releases is not
 yet supported.
 
-For local development, self-hosting, and contribution guidelines, see
+For local development and contribution guidelines, see
 [CONTRIBUTING.md](CONTRIBUTING.md).

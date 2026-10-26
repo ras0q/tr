@@ -32,15 +32,11 @@ export async function readExecutablePath(
   }
 }
 
-export function locateZipDirectory(
-  tail: Uint8Array,
-): { offset: number; length: number } {
+export function locateZipDirectory(tail: Uint8Array): { offset: number; length: number } {
   const min = Math.max(0, tail.length - ZIP_TAIL);
   for (let i = tail.length - 22; i >= min; i--) {
-    if (
-      tail[i] !== 0x50 || tail[i + 1] !== 0x4b || tail[i + 2] !== 0x05 ||
-      tail[i + 3] !== 0x06
-    ) continue;
+    if (tail[i] !== 0x50 || tail[i + 1] !== 0x4b || tail[i + 2] !== 0x05 || tail[i + 3] !== 0x06)
+      continue;
     const comment = u16(tail, i + 20);
     if (i + 22 + comment !== tail.length) continue;
     const length = u32(tail, i + 12);
@@ -58,15 +54,16 @@ export function zipMemberNames(directory: Uint8Array): string[] {
   let pos = 0;
   while (pos + 46 <= directory.length) {
     if (
-      directory[pos] !== 0x50 || directory[pos + 1] !== 0x4b ||
-      directory[pos + 2] !== 0x01 || directory[pos + 3] !== 0x02
-    ) break;
+      directory[pos] !== 0x50 ||
+      directory[pos + 1] !== 0x4b ||
+      directory[pos + 2] !== 0x01 ||
+      directory[pos + 3] !== 0x02
+    )
+      break;
     const nameLen = u16(directory, pos + 28);
     const extraLen = u16(directory, pos + 30);
     const commentLen = u16(directory, pos + 32);
-    const name = new TextDecoder().decode(
-      directory.subarray(pos + 46, pos + 46 + nameLen),
-    );
+    const name = new TextDecoder().decode(directory.subarray(pos + 46, pos + 46 + nameLen));
     if (!name.endsWith("/")) names.push(name);
     pos += 46 + nameLen + extraLen + commentLen;
   }
@@ -146,26 +143,20 @@ async function executableInZip(
   const located = await locate(asset.url, fetchImpl, signal);
   const tailLength = Math.min(asset.size, ZIP_TAIL);
   const tailStart = asset.size - tailLength;
-  const tail = await readRange(
-    located,
-    tailStart,
-    asset.size - 1,
-    asset,
-    fetchImpl,
-    signal,
-  );
+  const tail = await readRange(located, tailStart, asset.size - 1, asset, fetchImpl, signal);
   const directory = locateZipDirectory(tail);
   const local = directory.offset - tailStart;
-  const bytes = local >= 0 && local + directory.length <= tail.length
-    ? tail.subarray(local, local + directory.length)
-    : await readRange(
-      located,
-      directory.offset,
-      directory.offset + directory.length - 1,
-      asset,
-      fetchImpl,
-      signal,
-    );
+  const bytes =
+    local >= 0 && local + directory.length <= tail.length
+      ? tail.subarray(local, local + directory.length)
+      : await readRange(
+          located,
+          directory.offset,
+          directory.offset + directory.length - 1,
+          asset,
+          fetchImpl,
+          signal,
+        );
   return chooseExecutable(zipMemberNames(bytes), command, asset.os);
 }
 
@@ -196,11 +187,7 @@ async function openStream(
   return first as Response & { body: ReadableStream<Uint8Array> };
 }
 
-async function locate(
-  url: string,
-  fetchImpl: typeof fetch,
-  signal: AbortSignal,
-): Promise<string> {
+async function locate(url: string, fetchImpl: typeof fetch, signal: AbortSignal): Promise<string> {
   const response = await fetchImpl(url, { redirect: "manual", signal });
   const location = response.headers.get("location");
   await response.body?.cancel();
@@ -227,9 +214,7 @@ async function readRange(
     await response.body?.cancel();
     throw new ResolveError(`asset range failed: ${asset.assetName}`);
   }
-  const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(
-    response.headers.get("content-range") ?? "",
-  );
+  const match = /^bytes (\d+)-(\d+)\/(\d+)$/.exec(response.headers.get("content-range") ?? "");
   if (!match || Number(match[3]) !== asset.size) {
     await response.body?.cancel();
     throw new ResolveError(`unexpected size for ${asset.assetName}`);
@@ -241,9 +226,7 @@ async function readRange(
   return bytes;
 }
 
-function tarHeader(
-  block: Uint8Array,
-): { name: string; size: number; type: string } {
+function tarHeader(block: Uint8Array): { name: string; size: number; type: string } {
   const magic = text(block, 257, 263);
   const prefix = magic.startsWith("ustar") ? text(block, 345, 500) : "";
   const name = text(block, 0, 100);
@@ -342,6 +325,11 @@ function u16(bytes: Uint8Array, offset: number): number {
 }
 
 function u32(bytes: Uint8Array, offset: number): number {
-  return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) |
-    (bytes[offset + 3] << 24)) >>> 0;
+  return (
+    (bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24)) >>>
+    0
+  );
 }

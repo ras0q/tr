@@ -1,6 +1,7 @@
+import { expect, test } from "vite-plus/test";
 import { getOSArch, parseAssetName } from "./parse_asset.ts";
 
-Deno.test("parseAssetName matches aqua's cases", async (t) => {
+test("parseAssetName matches aqua's cases", async () => {
   const cases = [
     ["basic linux tar.gz", "tool-v1.0.0-linux-amd64.tar.gz", "v1.0.0"],
     ["windows exe", "tool-1.0.0-windows-amd64.exe", "1.0.0"],
@@ -11,13 +12,15 @@ Deno.test("parseAssetName matches aqua's cases", async (t) => {
     ["gh macos", "gh_2.102.0_macOS_arm64.zip", "v2.102.0"],
     ["gh deb ignored by format", "gh_2.102.0_linux_amd64.deb", "v2.102.0"],
   ] as const;
-  await t.assertSnapshot(cases.map(([label, assetName, version]) => ({
-    label,
-    ...parseAssetName(assetName, version),
-  })));
+  expect(
+    cases.map(([label, assetName, version]) => ({
+      label,
+      ...parseAssetName(assetName, version),
+    })),
+  ).toMatchSnapshot();
 });
 
-Deno.test("getOSArch prefers the plain archive", async (t) => {
+test("getOSArch prefers the plain archive", async () => {
   const chosen = getOSArch(
     "linux",
     "amd64",
@@ -28,5 +31,5 @@ Deno.test("getOSArch prefers the plain archive", async (t) => {
       "ollama-linux-amd64.tar.gz",
     ].map((name) => parseAssetName(name, "v1.0.0")),
   );
-  await t.assertSnapshot({ chosen: chosen?.template, format: chosen?.format });
+  expect({ chosen: chosen?.template, format: chosen?.format }).toMatchSnapshot();
 });

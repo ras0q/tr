@@ -1,8 +1,4 @@
-import {
-  type Repository,
-  ResolveError,
-  type ToolManifest,
-} from "../../core/resolve.ts";
+import { type Repository, ResolveError, type ToolManifest } from "../../core/resolve.ts";
 
 declare const npmScope: unique symbol;
 
@@ -26,9 +22,7 @@ export function npmScopeFrom(scope: string): NpmScope {
 }
 
 /** The first `--` separates the source owner from the repository name. */
-export function parsePackageName(
-  name: string,
-): Repository | undefined {
+export function parsePackageName(name: string): Repository | undefined {
   const sep = name.indexOf("--");
   if (sep <= 0 || sep + 2 >= name.length) return undefined;
   const owner = name.slice(0, sep);
@@ -55,9 +49,7 @@ export function createNpmPackage(
   id: Repository,
   manifest: ToolManifest,
 ): NpmPackage {
-  const version = manifest.tag.startsWith("v")
-    ? manifest.tag.slice(1)
-    : manifest.tag;
+  const version = manifest.tag.startsWith("v") ? manifest.tag.slice(1) : manifest.tag;
   if (!SEMVER.test(version)) {
     throw new ResolveError(`unsupported npm tag ${manifest.tag}`);
   }

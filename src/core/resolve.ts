@@ -30,12 +30,7 @@ type PlatformBase = {
   assetName: string;
 };
 
-export type SelectedPlatform =
-  & PlatformBase
-  & (
-    | { archive: "raw" }
-    | { archive: "tar.gz" | "zip" }
-  );
+export type SelectedPlatform = PlatformBase & ({ archive: "raw" } | { archive: "tar.gz" | "zip" });
 
 export type SelectedRelease = {
   source: string;
@@ -158,10 +153,7 @@ export function releaseFrom(input: {
   };
 }
 
-export function selectRelease(
-  { owner, repo }: Repository,
-  release: Release,
-): SelectedRelease {
+export function selectRelease({ owner, repo }: Repository, release: Release): SelectedRelease {
   const parsed = release.assets.flatMap((asset) => {
     if (excludeAsset(repo, asset.name)) return [];
     const info = parseAssetName(asset.name, release.tag);
@@ -214,8 +206,7 @@ function validateSource(source: string, tag: string): void {
 }
 
 function parseCommand(template: string, repo: string): string {
-  const command = (template.split("{{")[0] ?? "").replace(/[._-]+$/, "") ||
-    repo;
+  const command = (template.split("{{")[0] ?? "").replace(/[._-]+$/, "") || repo;
   if (!/^[A-Za-z0-9._+-]+$/.test(command)) {
     throw new ResolveError(`unsupported command name ${command}`);
   }
@@ -230,11 +221,7 @@ function listable(format: string): "tar.gz" | "zip" | "raw" | undefined {
 }
 
 /** The Windows zip has no top-level directory, so the path comes from the member list. */
-export function chooseExecutable(
-  paths: readonly string[],
-  command: string,
-  os: string,
-): string {
+export function chooseExecutable(paths: readonly string[], command: string, os: string): string {
   const files = paths.map(normalizePath).filter((path) => path !== "");
   const want = new Set(
     os === "windows"
@@ -242,13 +229,13 @@ export function chooseExecutable(
       : [command.toLowerCase()],
   );
   const matches = files.filter((path) =>
-    want.has(path.slice(path.lastIndexOf("/") + 1).toLowerCase())
+    want.has(path.slice(path.lastIndexOf("/") + 1).toLowerCase()),
   );
   const exe = matches.filter((path) => path.toLowerCase().endsWith(".exe"));
   const pool = os === "windows" && exe.length > 0 ? exe : matches;
   const binned = pool.filter((path) => path.split("/").includes("bin"));
-  const ranked = (binned.length > 0 ? binned : pool).toSorted((a, b) =>
-    a.length - b.length || a.localeCompare(b)
+  const ranked = (binned.length > 0 ? binned : pool).toSorted(
+    (a, b) => a.length - b.length || a.localeCompare(b),
   );
   if (ranked.length === 0) {
     throw new ResolveError(`no executable named ${command}`);

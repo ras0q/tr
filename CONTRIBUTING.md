@@ -2,25 +2,31 @@
 
 ## Local development
 
-Start the registry:
+Use a Node.js version supported by `package.json` and install dependencies with
+`npm ci`.
+
+Start the registry in the local Workers runtime with simulated D1 and R2:
 
 ```sh
-deno task start
+npm start
 # → http://127.0.0.1:8787/
 ```
 
-Set `TR_GITHUB_TOKEN` in the process environment to authenticate GitHub API
-requests. Without it, local development uses unauthenticated requests. The token
-is sent only to the GitHub API, never to release asset downloads.
-
-## Cloudflare staging
-
-Run the local Workers runtime with simulated D1 and R2:
+Set `TR_GITHUB_TOKEN` in `.dev.vars` to authenticate GitHub API requests:
 
 ```sh
-deno task cf dev
-# → http://127.0.0.1:8788/
+TR_GITHUB_TOKEN=your-token
 ```
+
+Without it, local development uses unauthenticated requests. The token is sent
+only to the GitHub API, never to release asset downloads. Local D1 and R2 data
+persists in `.cloudflare/`.
+
+Run `npm run e2e` to install a package against a temporary Workers registry.
+The test uses the same Vite configuration with isolated, nonpersistent D1 and R2.
+
+Run `npm run check` for formatting, linting, type checks, and unit tests through
+Vite+. Use `npm run fmt` to format and `npm run build` to build the Worker.
 
 ## Contribution guidelines
 
@@ -30,7 +36,7 @@ Production modules under `src/` use Node.js built-ins (`node:`) and Web APIs
 that Node implements.
 
 Write documentation and comments in English. Write lines out to the width
-`deno task check` keeps. A function that only forwards to another function does
+`npm run check` keeps. A function that only forwards to another function does
 not get its own name.
 
 Prefer preventing bugs through structural and type constraints over adding

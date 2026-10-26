@@ -11,9 +11,7 @@ export function createSqlite(path: string): Sql {
     },
     first(sql, params) {
       const row = db.prepare(sql).get(...(params as SQLInputValue[]));
-      return Promise.resolve(
-        row === undefined ? undefined : row as Record<string, unknown>,
-      );
+      return Promise.resolve(row === undefined ? undefined : (row as Record<string, unknown>));
     },
     run(sql, params) {
       db.prepare(sql).run(...(params as SQLInputValue[]));

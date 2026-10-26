@@ -2,10 +2,7 @@ import { type D1Database, type R2Bucket } from "@cloudflare/workers-types";
 import { readExecutablePath } from "./adapter/archive.ts";
 import { createD1Sql } from "./adapter/d1.ts";
 import { createGitHubSource } from "./adapter/github.ts";
-import {
-  createGitHubReleaseCache,
-  githubCacheTtlFrom,
-} from "./adapter/github_cache.ts";
+import { createGitHubReleaseCache, githubCacheTtlFrom } from "./adapter/github_cache.ts";
 import { npmScopeFrom } from "./adapter/npm/package.ts";
 import { createNpmRegistry } from "./adapter/npm/registry.ts";
 import { createR2ObjectStore } from "./adapter/r2.ts";

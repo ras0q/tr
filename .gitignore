@@ -1,7 +1,5 @@
-.deno/
+node_modules/
+dist/
 .cloudflare/
-tr.objects/
-*.sqlite
-*.sqlite-journal
-*.sqlite-wal
-*.sqlite-shm
+.dev.vars
+.dev.vars.*

@@ -3,21 +3,22 @@ import { type ToolManifest } from "../core/resolve.ts";
 /** The DotSlash manifest fields emitted by this adapter. */
 type DotslashManifest = {
   name: string;
-  platforms: Record<string, {
-    size: number;
-    hash: "sha256";
-    digest: string;
-    format?: "tar.gz" | "zip";
-    path: string;
-    providers: { url: string }[];
-  }>;
+  platforms: Record<
+    string,
+    {
+      size: number;
+      hash: "sha256";
+      digest: string;
+      format?: "tar.gz" | "zip";
+      path: string;
+      providers: { url: string }[];
+    }
+  >;
 };
 
 export function renderDotslash(resolved: ToolManifest): string {
   const platforms: DotslashManifest["platforms"] = {};
-  const ordered = [...resolved.platforms].sort((a, b) =>
-    a.platform.localeCompare(b.platform)
-  );
+  const ordered = [...resolved.platforms].sort((a, b) => a.platform.localeCompare(b.platform));
   for (const item of ordered) {
     platforms[item.platform] = {
       size: item.size,

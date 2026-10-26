@@ -8,9 +8,7 @@ export type GitHubCacheTtl = number & { readonly [githubCacheTtl]: never };
 export function githubCacheTtlFrom(value = "5m"): GitHubCacheTtl {
   const match = /^([1-9]\d*)(s|m|h)$/.exec(value);
   if (!match) {
-    throw new Error(
-      "GitHub cache TTL must be a positive duration such as 30s, 5m or 1h",
-    );
+    throw new Error("GitHub cache TTL must be a positive duration such as 30s, 5m or 1h");
   }
   const units: Record<string, number> = { s: 1000, m: 60_000, h: 3_600_000 };
   const milliseconds = Number(match[1]) * units[match[2]];
@@ -28,9 +26,7 @@ const Stored = v.object({
 });
 
 type Entry = Omit<v.InferOutput<typeof Stored>, "revision">;
-export type GitHubReleaseCache = Awaited<
-  ReturnType<typeof createGitHubReleaseCache>
->;
+export type GitHubReleaseCache = Awaited<ReturnType<typeof createGitHubReleaseCache>>;
 
 /** Mutable GitHub API snapshots, separate from immutable source manifests. */
 export async function createGitHubReleaseCache(sql: Sql) {
@@ -52,11 +48,7 @@ export async function createGitHubReleaseCache(sql: Sql) {
       return row ? v.parse(Stored, row) : undefined;
     },
     /** A refresh can replace only the snapshot it read, including on 304. */
-    async putIfUnchanged(
-      url: string,
-      entry: Entry,
-      previousRevision: string | undefined,
-    ) {
+    async putIfUnchanged(url: string, entry: Entry, previousRevision: string | undefined) {
       await sql.run(
         `INSERT INTO github_release_cache (url, body, etag, checked_at, revision)
          VALUES (?, ?, ?, ?, ?)

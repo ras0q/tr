@@ -164,19 +164,18 @@ export function parseAssetName(assetName: string, version: string): AssetInfo {
     musl: false,
   };
   if (info.template === assetName) {
-    info.template = replaceOnce(
-      assetName,
-      version.replace(/^v/, ""),
-      "{{trimV .Version}}",
-    );
+    info.template = replaceOnce(assetName, version.replace(/^v/, ""), "{{trimV .Version}}");
   }
   const low = assetName.toLowerCase();
   setOS(assetName, low, info);
   setArch(assetName, low, info);
   if (info.arch === "" && info.os === OS_DARWIN) {
     if (
-      low.includes("_all") || low.includes("-all") || low.includes(".all") ||
-      low.includes("_universal") || low.includes("-universal") ||
+      low.includes("_all") ||
+      low.includes("-all") ||
+      low.includes(".all") ||
+      low.includes("_universal") ||
+      low.includes("-universal") ||
       low.includes(".universal")
     ) {
       info.darwinAll = true;
@@ -192,8 +191,7 @@ export function parseAssetName(assetName: string, version: string): AssetInfo {
   info.format = formatOf(assetName);
   if (info.format !== FORMAT_RAW) {
     info.template =
-      info.template.slice(0, info.template.length - info.format.length) +
-      "{{.Format}}";
+      info.template.slice(0, info.template.length - info.format.length) + "{{.Format}}";
   }
   if (info.os === OS_WINDOWS && info.format === FORMAT_RAW) {
     if (info.template.endsWith(".exe")) {
@@ -243,10 +241,7 @@ function prefer(candidate: AssetInfo, incumbent: AssetInfo): boolean {
   }
   const incumbentBrace = incumbent.template.indexOf("{");
   const candidateBrace = candidate.template.indexOf("{");
-  if (
-    incumbentBrace !== candidateBrace && incumbentBrace !== -1 &&
-    candidateBrace !== -1
-  ) {
+  if (incumbentBrace !== candidateBrace && incumbentBrace !== -1 && candidateBrace !== -1) {
     return incumbentBrace > candidateBrace;
   }
   return plainer(candidate.template, incumbent.template);

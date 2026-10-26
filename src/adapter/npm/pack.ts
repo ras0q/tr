@@ -24,21 +24,21 @@ export type NpmVersionMetadata = {
 };
 
 function renderPackageJson(resolved: NpmPackage): string {
-  return JSON.stringify(
-    {
-      name: resolved.packageName,
-      version: resolved.version,
-      bin: { [resolved.command]: `${resolved.command}.dotslash` },
-      peerDependencies: { "fb-dotslash": FB_DOTSLASH_RANGE },
-    },
-    null,
-    2,
-  ) + "\n";
+  return (
+    JSON.stringify(
+      {
+        name: resolved.packageName,
+        version: resolved.version,
+        bin: { [resolved.command]: `${resolved.command}.dotslash` },
+        peerDependencies: { "fb-dotslash": FB_DOTSLASH_RANGE },
+      },
+      null,
+      2,
+    ) + "\n"
+  );
 }
 
-export async function packNpmPackage(
-  resolved: NpmPackage,
-): Promise<PackedNpmPackage> {
+export async function packNpmPackage(resolved: NpmPackage): Promise<PackedNpmPackage> {
   const tar = await tarFiles([
     ["package/package.json", renderPackageJson(resolved)],
     [`package/${resolved.command}.dotslash`, renderDotslash(resolved)],
@@ -49,16 +49,11 @@ export async function packNpmPackage(
     version: resolved.version,
     tarball,
     shasum: createHash("sha1").update(tarball).digest("hex"),
-    integrity: `sha512-${
-      createHash("sha512").update(tarball).digest("base64")
-    }`,
+    integrity: `sha512-${createHash("sha512").update(tarball).digest("base64")}`,
   };
 }
 
-export function packument(
-  metadata: NpmVersionMetadata,
-  origin: string,
-) {
+export function packument(metadata: NpmVersionMetadata, origin: string) {
   return {
     name: metadata.name,
     "dist-tags": { latest: metadata.version },
@@ -115,7 +110,7 @@ async function tarFiles(files: Array<[string, string]>): Promise<Buffer> {
       archive.entry(
         { name, mode: 0o644, mtime: new Date(0), uid: 0, gid: 0 },
         Buffer.from(text),
-        (error) => error ? reject(error) : resolve(),
+        (error) => (error ? reject(error) : resolve()),
       );
     });
   }

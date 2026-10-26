@@ -1,15 +1,41 @@
 {
   "name": "tr",
-  "description": "Your CLI tools, managed with npm",
   "private": true,
+  "description": "Your CLI tools, managed with npm",
   "type": "module",
   "scripts": {
+    "start": "vp dev",
+    "build": "vp build",
+    "test": "vp test",
+    "e2e": "node --test e2e/install_test.ts",
+    "check": "vp check && vp test",
+    "fmt": "vp fmt",
+    "lint": "vp lint",
+    "cf": "cf",
     "demo": "vhs docs/demo.tape"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "hono": "4.13.13",
+    "tar-stream": "3.2.2",
+    "valibot": "1.5.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "2.0.0-beta.v.2",
     "@cloudflare/workers-types": "5.20261019.1",
     "@tr/charmbracelet--vhs": "0.12.1",
-    "vite": "8.3.4"
+    "@types/node": "24.19.2",
+    "@types/tar-stream": "3.1.5",
+    "cf": "0.15.0",
+    "typescript": "6.0.3",
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+    "vite-plus": "1.4.0"
+  },
+  "overrides": {
+    "vite": "$vite",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
   }
 }

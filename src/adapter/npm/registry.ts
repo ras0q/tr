@@ -1,11 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { packument, withTarballOrigin } from "./pack.ts";
-import {
-  type NpmScope,
-  parsePackageName,
-  parseTarballName,
-} from "./package.ts";
+import { type NpmScope, parsePackageName, parseTarballName } from "./package.ts";
 import {
   NotFoundError,
   type Repository,
@@ -54,11 +50,7 @@ export function createNpmRegistry(
   </body>
 </html>
 `;
-    return c.body(
-      html,
-      200,
-      { "content-type": "text/html; charset=utf-8" },
-    );
+    return c.body(html, 200, { "content-type": "text/html; charset=utf-8" });
   });
 
   app.notFound((c) => c.text("404 Not Found", 404));
@@ -75,10 +67,7 @@ export function createNpmRegistry(
   });
 
   app.get(`/${scope}/:name/-/:file{.+\\.tgz}`, async (c) => {
-    const requested = parseTarballName(
-      c.req.param("name"),
-      c.req.param("file"),
-    );
+    const requested = parseTarballName(c.req.param("name"), c.req.param("file"));
     if (!requested) return c.notFound();
     const published = await packages.resolve(requested.id, requested.version);
     if (!published) return c.notFound();
@@ -91,14 +80,9 @@ export function createNpmRegistry(
     const id = parsePackageName(c.req.param("name"));
     if (!id) return c.notFound();
     const version = c.req.param("version");
-    const published = await packages.resolve(
-      id,
-      version === "latest" ? undefined : version,
-    );
+    const published = await packages.resolve(id, version === "latest" ? undefined : version);
     if (!published) return c.notFound();
-    return c.json(
-      withTarballOrigin(published.metadata, new URL(c.req.url).origin),
-    );
+    return c.json(withTarballOrigin(published.metadata, new URL(c.req.url).origin));
   });
 
   app.get(`/${scope}/:name`, async (c) => {

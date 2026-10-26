@@ -1,13 +1,13 @@
-export const snapshot = {};
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-snapshot[`registry responses 1`] = `
+exports[`registry responses 1`] = `
 {
-  broken: {
-    body: "no installable asset for cli/cli",
-    status: 502,
+  "broken": {
+    "body": "no installable asset for cli/cli",
+    "status": 502,
   },
-  files: {
-    "package/gh.dotslash": '#!/usr/bin/env dotslash
+  "files": {
+    "package/gh.dotslash": "#!/usr/bin/env dotslash
 {
   "name": "gh",
   "platforms": {
@@ -85,8 +85,8 @@ snapshot[`registry responses 1`] = `
     }
   }
 }
-',
-    "package/package.json": '{
+",
+    "package/package.json": "{
   "name": "@tr/cli--cli",
   "version": "2.102.0",
   "bin": {
@@ -96,33 +96,33 @@ snapshot[`registry responses 1`] = `
     "fb-dotslash": "^0.5.8"
   }
 }
-',
+",
   },
-  missingStatus: 404,
-  packument: {
+  "missingStatus": 404,
+  "packument": {
     "dist-tags": {
-      latest: "2.102.0",
+      "latest": "2.102.0",
     },
-    name: "@tr/cli--cli",
-    versions: {
+    "name": "@tr/cli--cli",
+    "versions": {
       "2.102.0": {
-        bin: {
-          gh: "gh.dotslash",
+        "bin": {
+          "gh": "gh.dotslash",
         },
-        dist: {
-          integrity: "sha512-u8A/npblvmvpcVF2cLN0YypCYOoIMIUL3r0SmWNbs2YUMAwBY1o4XT2POnUDaJTTqhy7z8nRX9Cw4UoHYn39Wg==",
-          shasum: "202fc92750de2c097a578cb258c7381a3fc752af",
-          tarball: "http://127.0.0.1:8787/@tr/cli--cli/-/cli--cli-2.102.0.tgz",
+        "dist": {
+          "integrity": "sha512-u8A/npblvmvpcVF2cLN0YypCYOoIMIUL3r0SmWNbs2YUMAwBY1o4XT2POnUDaJTTqhy7z8nRX9Cw4UoHYn39Wg==",
+          "shasum": "202fc92750de2c097a578cb258c7381a3fc752af",
+          "tarball": "http://127.0.0.1:8787/@tr/cli--cli/-/cli--cli-2.102.0.tgz",
         },
-        name: "@tr/cli--cli",
-        peerDependencies: {
+        "name": "@tr/cli--cli",
+        "peerDependencies": {
           "fb-dotslash": "^0.5.8",
         },
-        version: "2.102.0",
+        "version": "2.102.0",
       },
     },
   },
-  repeatIntegrity: "sha512-u8A/npblvmvpcVF2cLN0YypCYOoIMIUL3r0SmWNbs2YUMAwBY1o4XT2POnUDaJTTqhy7z8nRX9Cw4UoHYn39Wg==",
-  tarballStatus: 200,
+  "repeatIntegrity": "sha512-u8A/npblvmvpcVF2cLN0YypCYOoIMIUL3r0SmWNbs2YUMAwBY1o4XT2POnUDaJTTqhy7z8nRX9Cw4UoHYn39Wg==",
+  "tarballStatus": 200,
 }
 `;
