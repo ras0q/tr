@@ -25,6 +25,9 @@ npx gh --version
 
 Run tools through `npx` or npm scripts so their interpreter is on `PATH`.
 
+For coding agents, [the tr skill](skills/tr/SKILL.md) covers adding tools to
+`package.json` and npm scripts.
+
 ## How it works
 
 tr packages a Meta's [DotSlash](https://dotslash-cli.com/) manifest instead of
